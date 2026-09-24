@@ -61,9 +61,10 @@ DEFAULT_SLIDERS = {
 
 # --- LOAD SAVED SETTINGS ---
 def load_sliders():
-    if os.path.exists("slider_settings.json"):
+    user_file = f"slider_{st.session_state.get('m_user', 'guest')}.json"
+    if os.path.exists(user_file):
         try:
-            with open("slider_settings.json", "r") as f:
+            with open(user_file, "r") as f:
                 return json.load(f)
         except: pass
     return DEFAULT_SLIDERS.copy()
@@ -139,7 +140,8 @@ with st.sidebar.expander("🎛️ Sliders (RSI, Vol, ORB)", expanded=False):
             "wick_limit": wick_limit, "vwap_dist_limit": vwap_dist_limit,
             "min_price": min_price, "max_price": max_price
         }
-        with open("slider_settings.json", "w") as f: json.dump(new_sl, f)
+        # with open("slider_settings.json", "w") as f: json.dump(new_sl, f)
+        with open(f"slider_{st.session_state.get('m_user', 'guest')}.json", "w") as f: json.dump(new_sl, f)
         st.session_state.sl_state = new_sl
         st.success("Saved!")
         time.sleep(0.5)
@@ -147,7 +149,8 @@ with st.sidebar.expander("🎛️ Sliders (RSI, Vol, ORB)", expanded=False):
         
     # 🔄 DEFAULT BUTTON
     if btn_reset.button("🔄 Default", width="stretch"):
-        with open("slider_settings.json", "w") as f: json.dump(DEFAULT_SLIDERS, f)
+        # with open("slider_settings.json", "w") as f: json.dump(DEFAULT_SLIDERS, f)
+        with open(f"slider_{st.session_state.get('m_user', 'guest')}.json", "w") as f: json.dump(DEFAULT_SLIDERS, f)
         st.session_state.sl_state = DEFAULT_SLIDERS.copy()
         st.success("Reset to Strict!")
         time.sleep(0.5)
