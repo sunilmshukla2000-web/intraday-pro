@@ -81,11 +81,11 @@ def start_mstock_ws(api_key, access_token, log_func=print):
 
 def init_mstock(user, pwd, totp_sec, api_key):
     global MSTOCK_CACHE
-    if MSTOCK_CACHE["access_token"] and len(MSTOCK_CACHE["token_map"]) > 0:
-        return MSTOCK_CACHE["access_token"], MSTOCK_CACHE["token_map"]
+    if MSTOCK_CACHE.get(f"access_token_{api_key}") and len(MSTOCK_CACHE.get("token_map", {})) > 0:
+        return MSTOCK_CACHE[f"access_token_{api_key}"], MSTOCK_CACHE["token_map"]
 
     session = requests.Session()
-    MSTOCK_CACHE["session"] = session
+    MSTOCK_CACHE[f"session_{api_key}"] = session
 
     res1 = session.post('https://api.mstock.trade/openapi/typea/connect/login',
                         headers={'X-Mirae-Version': '1', 'Content-Type': 'application/x-www-form-urlencoded'},
@@ -120,7 +120,7 @@ def init_mstock(user, pwd, totp_sec, api_key):
                     df_nfo = df_master[df_master[exc_col].astype(str).str.strip().str.upper() == 'NFO']
                     
                     if len(temp_map) > 0:
-                        MSTOCK_CACHE["access_token"] = temp_token
+                        MSTOCK_CACHE[f"access_token_{api_key}"] = temp_token
                         MSTOCK_CACHE["token_map"] = temp_map
                         MSTOCK_CACHE["df_options"] = df_nfo
                         return temp_token, temp_map
@@ -205,8 +205,8 @@ def get_live_option_premium(opt_symbol, api_key):
                         if tk in WS_CACHE["data"] and WS_CACHE["data"][tk]["ltp"] > 0:
                             return float(WS_CACHE["data"][tk]["ltp"])
                         
-            token = MSTOCK_CACHE["access_token"]
-            session = MSTOCK_CACHE["session"]
+            token = MSTOCK_CACHE.get(f"access_token_{api_key}")
+            session = MSTOCK_CACHE.get(f"session_{api_key}")
             if not token or not session or not opt_symbol: return 0.0
                 
             headers = {'X-Mirae-Version': '1', 'Authorization': f'token {api_key}:{token}'}
@@ -606,8 +606,8 @@ def run_stock_scanner(params):
                     trade_sym = exact_opt_sym if is_opt_trade else f"{s}-EQ"
                     broker_action = "BUY" if is_opt_trade else action_type
                         
-                    session = MSTOCK_CACHE.get("session")
-                    acc_tok = MSTOCK_CACHE.get("access_token")
+                    session = MSTOCK_CACHE.get(f"session_{m_api_key}")
+                    acc_tok = MSTOCK_CACHE.get(f"access_token_{m_api_key}")
                     ord_price = opt_entry_price if is_opt_trade else cp
                     
                     raw_res = place_mstock_order(session, m_api_key, acc_tok, exc, trade_sym, trade_qty, broker_action, current_price=ord_price)

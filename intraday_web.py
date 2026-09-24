@@ -361,8 +361,8 @@ if eod_btn:
 
                 # --- 🔴 ACTUAL BROKER ORDER LOGIC ---
                 if is_real_money and m_api_key:
-                    session = MSTOCK_CACHE.get("session")
-                    acc_tok = MSTOCK_CACHE.get("access_token")
+                    session = MSTOCK_CACHE.get(f"session_{m_api_key}")
+                    acc_tok = MSTOCK_CACHE.get(f"access_token_{m_api_key}")
                     if session and acc_tok:
                         exc = "NFO" if is_opt else "NSE"
                         trade_sym = t_data.get("opt_sym") if is_opt else f"{k}-EQ"
@@ -414,8 +414,8 @@ if st.session_state.signal_tracker:
                 
                 # Agar real trade tha, toh mStock par Exit Order fire karo
                 if is_real_money and m_api_key:
-                    session = MSTOCK_CACHE.get("session")
-                    acc_tok = MSTOCK_CACHE.get("access_token")
+                    session = MSTOCK_CACHE.get(f"session_{m_api_key}")
+                    acc_tok = MSTOCK_CACHE.get(f"access_token_{m_api_key}")
                     
                     if session and acc_tok:
                         exc = "NFO" if is_opt else "NSE"
@@ -617,7 +617,8 @@ if st.session_state.signal_tracker:
                     os.makedirs(history_dir)
                     
                 # Aaj ki date ke naam se file ka naam set hoga
-                file_name = f"{history_dir}/EOD_Report_{datetime.now().strftime('%d_%b_%Y')}.csv"
+                current_user = st.session_state.get('m_user', 'guest')
+                file_name = f"{history_dir}/EOD_Report_{current_user}_{datetime.now().strftime('%d_%b_%Y')}.csv"
                 
                 # Check karega ki aaj ki file pehle se ban toh nahi gayi
                 if not os.path.exists(file_name):
@@ -661,8 +662,8 @@ if st.session_state.signal_tracker:
                 current_price = float(last_res.get("opt_p", 0.0)) if is_opt else float(last_res.get("p", 0.0))
                 
                 if is_real_money and m_api_key:
-                    session = MSTOCK_CACHE.get("session")
-                    acc_tok = MSTOCK_CACHE.get("access_token")
+                    session = MSTOCK_CACHE.get(f"session_{m_api_key}")
+                    acc_tok = MSTOCK_CACHE.get(f"access_token_{m_api_key}")
                     
                     if session and acc_tok:
                         exc = "NFO" if is_opt else "NSE"
