@@ -620,12 +620,19 @@ if st.session_state.signal_tracker:
         st.write("") # Thoda space
         col_dl1, col_dl2 = st.columns([1, 4])
         with col_dl1:
+            # --- FIX: Excel ke liye data ki copy banakar decimals set karna ---
+            df_export = df_view.copy()
+            numeric_cols = ['Spot Ent', 'Spot LTP', 'Opt Ent', 'Opt LTP', 'Spot P/L', 'Opt P/L', 'Net P/L', 'Fund (₹)']
+            for col in numeric_cols:
+                if col in df_export.columns:
+                    df_export[col] = pd.to_numeric(df_export[col], errors='coerce').round(2)
+            
             # 1. Main Table Data
-            base_csv = df_view.to_csv(index=False)
+            base_csv = df_export.to_csv(index=False)
             
             # 2. Advanced Summary Calculation (Cash vs Options)
-            cash_df = df_view[df_view['Strike/Type'] == 'CASH (Eq)']
-            opt_df = df_view[df_view['Strike/Type'] != 'CASH (Eq)']
+            cash_df = df_export[df_export['Strike/Type'] == 'CASH (Eq)']
+            opt_df = df_export[df_export['Strike/Type'] != 'CASH (Eq)']
             
             cash_inv = pd.to_numeric(cash_df['Fund (₹)'], errors='coerce').sum()
             opt_inv = pd.to_numeric(opt_df['Fund (₹)'], errors='coerce').sum()
@@ -639,7 +646,7 @@ if st.session_state.signal_tracker:
             opt_roi = (opt_pl / opt_inv * 100) if opt_inv > 0 else 0.0
             total_roi = (total_pl / total_inv * 100) if total_inv > 0 else 0.0
             
-            # 3. Format CSV Summary (Khali cells diye hain taaki design theek aaye)
+            # 3. Format CSV Summary
             summary_csv = f"""\n\n,,,--- ADVANCED DAILY SUMMARY ---
 ,,,Category,Total Investment (Rs),Net P/L (Rs),ROI (%)
 ,,,CASH (Equity),{cash_inv:.2f},{cash_pl:.2f},{cash_roi:.2f}%
@@ -647,7 +654,8 @@ if st.session_state.signal_tracker:
 ,,,TOTAL PORTFOLIO,{total_inv:.2f},{total_pl:.2f},{total_roi:.2f}%
 """
             
-            final_csv_data = (base_csv + summary_csv).encode('utf-8')
+            # --- FIX: 'utf-8-sig' lagane se Excel Emojis aur Rupee symbol sahi padhega ---
+            final_csv_data = (base_csv + summary_csv).encode('utf-8-sig')
             current_date = datetime.now(ist).strftime('%d_%b_%Y')
             
             # 4. Download Button
