@@ -632,8 +632,11 @@ def run_stock_scanner(params):
                         
                     params['log_func'](f"⚡ LIVE ORDER SENT: {trade_sym} | Qty: {trade_qty} | Action: {broker_action}")
 
+                import pytz
+                ist = pytz.timezone('Asia/Kolkata')
+                
                 kundali_text = f"=== DEEP KUNDALI FOR {s} ===\n"
-                kundali_text += f"Time: {datetime.now().strftime('%H:%M:%S')}\n"
+                kundali_text += f"Time: {datetime.now(ist).strftime('%H:%M:%S')}\n"
                 kundali_text += f"Signal: {sig} (Action: {action_type})\n"
                 kundali_text += f"Live Price: ₹{cp:.2f} | VWAP: ₹{vw:.2f}\n"
                 kundali_text += f"Volume Spike: {vol_ratio:.2f}x (Allowed: {th}x to {max_vol_limit}x)\n"
@@ -645,11 +648,11 @@ def run_stock_scanner(params):
                 kundali_text += f"🔴 {order_response}"
 
                 signal_tracker[s] = {
-                    "time": datetime.now().strftime('%H:%M'), 
+                    "time": datetime.now(ist).strftime('%H:%M'), 
                     "entry": cp, "locked": False, "sig": sig, "opt": opt_str,
                     "t_dist": t_dist, "s_dist": s_dist,
                     "action": action_type, "opt_sym": exact_opt_sym, "opt_entry": opt_entry_price,
-                    "trade_qty": trade_qty, # Ye qty save kar li aage calculation ke liye
+                    "trade_qty": trade_qty, 
                     "status": "LIVE",
                     "kundali": kundali_text,
                     "is_mstock": is_mstock_success 
