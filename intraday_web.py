@@ -516,10 +516,12 @@ if should_run_scan:
                 c_hits = sum(1 for r in results if "C2C" in r.get("status", ""))
                 auto_exits = sum(1 for r in results if "3PM" in r.get("status", "") or "MANUAL" in r.get("status", ""))
                 
-                # NAYA LOGIC: Seedha total Rupees sum karna
+                # NAYA LOGIC: Total Rupees aur Total Investment sum karna
                 net_pl = sum(float(r.get("pl_rs_disp", 0.0)) for r in results)
+                total_inv = sum(float(r.get("fund_req_disp", 0.0)) for r in results)
+                roi_pct = (net_pl / total_inv * 100) if total_inv > 0 else 0.0
                 
-                st.session_state.score_text = f"Targets: {t_hits} | SL: {s_hits} | C2C/Auto-Exit: {c_hits + auto_exits} | Net P/L: ₹{net_pl:.2f}"
+                st.session_state.score_text = f"Targets: {t_hits} | SL: {s_hits} | C2C: {c_hits + auto_exits} | Inv: ₹{total_inv:,.0f} | Net P/L: ₹{net_pl:,.2f} ({roi_pct:+.2f}%)"
                 
         scan_msg = st.empty() # NAYA: Screen saaf karne wala Wiper 2
         if not auto_refresh:
@@ -613,19 +615,45 @@ if st.session_state.signal_tracker:
         )
         
         # =====================================================================
-        # 📥 NAYA FEATURE: ONE-CLICK EXCEL DOWNLOAD
+        # 📥 NAYA FEATURE: ONE-CLICK EXCEL DOWNLOAD (WITH DEEP SUMMARY)
         # =====================================================================
         st.write("") # Thoda space
         col_dl1, col_dl2 = st.columns([1, 4])
         with col_dl1:
-            # Table ka data CSV format me tayyar karna
-            csv_data = df_view.to_csv(index=False).encode('utf-8')
+            # 1. Main Table Data
+            base_csv = df_view.to_csv(index=False)
+            
+            # 2. Advanced Summary Calculation (Cash vs Options)
+            cash_df = df_view[df_view['Strike/Type'] == 'CASH (Eq)']
+            opt_df = df_view[df_view['Strike/Type'] != 'CASH (Eq)']
+            
+            cash_inv = pd.to_numeric(cash_df['Fund (₹)'], errors='coerce').sum()
+            opt_inv = pd.to_numeric(opt_df['Fund (₹)'], errors='coerce').sum()
+            total_inv = cash_inv + opt_inv
+            
+            cash_pl = pd.to_numeric(cash_df['Net P/L'], errors='coerce').sum()
+            opt_pl = pd.to_numeric(opt_df['Net P/L'], errors='coerce').sum()
+            total_pl = cash_pl + opt_pl
+            
+            cash_roi = (cash_pl / cash_inv * 100) if cash_inv > 0 else 0.0
+            opt_roi = (opt_pl / opt_inv * 100) if opt_inv > 0 else 0.0
+            total_roi = (total_pl / total_inv * 100) if total_inv > 0 else 0.0
+            
+            # 3. Format CSV Summary (Khali cells diye hain taaki design theek aaye)
+            summary_csv = f"""\n\n,,,--- ADVANCED DAILY SUMMARY ---
+,,,Category,Total Investment (Rs),Net P/L (Rs),ROI (%)
+,,,CASH (Equity),{cash_inv:.2f},{cash_pl:.2f},{cash_roi:.2f}%
+,,,OPTIONS (F&O),{opt_inv:.2f},{opt_pl:.2f},{opt_roi:.2f}%
+,,,TOTAL PORTFOLIO,{total_inv:.2f},{total_pl:.2f},{total_roi:.2f}%
+"""
+            
+            final_csv_data = (base_csv + summary_csv).encode('utf-8')
             current_date = datetime.now(ist).strftime('%d_%b_%Y')
             
-            # Download Button (Streamlit ka asli web feature)
+            # 4. Download Button
             st.download_button(
-                label="📥 Download EOD Excel (CSV)",
-                data=csv_data,
+                label="📥 Download EOD Excel (With Summary)",
+                data=final_csv_data,
                 file_name=f"Intraday_Report_{current_date}.csv",
                 mime="text/csv",
                 type="primary",
