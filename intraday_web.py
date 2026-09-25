@@ -613,28 +613,24 @@ if st.session_state.signal_tracker:
         )
         
         # =====================================================================
-        # 📥 NAYA FEATURE: SMART AUTO-SAVE EOD EXCEL (BACKGROUND)
+        # 📥 NAYA FEATURE: ONE-CLICK EXCEL DOWNLOAD
         # =====================================================================
-        try:
-            now_time = datetime.now(ist).time()
-            # 3:32 PM (15:32) ya uske baad hi file save hogi
-            if now_time >= dtime(15, 32):
-                history_dir = "HISTORY"
-                # Agar folder nahi hai, toh khud bana dega
-                if not os.path.exists(history_dir):
-                    os.makedirs(history_dir)
-                    
-                # Aaj ki date ke naam se file ka naam set hoga
-                current_user = st.session_state.get('m_user', 'guest')
-                file_name = f"{history_dir}/EOD_Report_{current_user}_{datetime.now().strftime('%d_%b_%Y')}.csv"
-                
-                # Check karega ki aaj ki file pehle se ban toh nahi gayi
-                if not os.path.exists(file_name):
-                    df_view.to_csv(file_name, index=False)
-                    # Screen par ek chhota popup dega ki file save ho chuki hai
-                    st.toast(f"✅ Auto-Saved EOD Report in '{history_dir}' folder!", icon="📥")
-        except Exception as e:
-            pass
+        st.write("") # Thoda space
+        col_dl1, col_dl2 = st.columns([1, 4])
+        with col_dl1:
+            # Table ka data CSV format me tayyar karna
+            csv_data = df_view.to_csv(index=False).encode('utf-8')
+            current_date = datetime.now(ist).strftime('%d_%b_%Y')
+            
+            # Download Button (Streamlit ka asli web feature)
+            st.download_button(
+                label="📥 Download EOD Excel (CSV)",
+                data=csv_data,
+                file_name=f"Intraday_Report_{current_date}.csv",
+                mime="text/csv",
+                type="primary",
+                use_container_width=True
+            )
             
     else: st.info(f"No {table_filter} trades right now.")
 
