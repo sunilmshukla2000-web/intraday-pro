@@ -25,7 +25,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Execution)</p>', unsafe_allow_html=True)
-st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now().strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
+import pytz
+ist = pytz.timezone('Asia/Kolkata')
+st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # =====================================================================
@@ -287,7 +289,9 @@ hide_wide = c2.checkbox("🚫 Hide Wide ORB", value=True)
 triple_conf = c3.checkbox("📈 Nifty Trend Sync", value=True)
 time_master = c4.checkbox("⏱️ Time Master (Strict)", value=True)
 
-curr_time = datetime.now().time()
+import pytz
+ist = pytz.timezone('Asia/Kolkata')
+curr_time = datetime.now(ist).time()
 from datetime import time as dtime
 current_zone_name = "Market Closed"
 is_active_zone = False
@@ -392,7 +396,7 @@ st.markdown("---")
 # ⏰ 3:00 PM AUTO SQUARE-OFF (SAVE RMS PENALTY)
 # =====================================================================
 if st.session_state.signal_tracker:
-    curr_time_eod = datetime.now().time()
+    curr_time_eod = datetime.now(ist).time()
     from datetime import time as dtime
     
     # Agar 3:00 PM ya uske baad ka time hai aur aaj ka auto-exit nahi hua hai
@@ -608,7 +612,7 @@ if st.session_state.signal_tracker:
         # 📥 NAYA FEATURE: SMART AUTO-SAVE EOD EXCEL (BACKGROUND)
         # =====================================================================
         try:
-            now_time = datetime.now().time()
+            now_time = datetime.now(ist).time()
             # 3:32 PM (15:32) ya uske baad hi file save hogi
             if now_time >= dtime(15, 32):
                 history_dir = "HISTORY"
