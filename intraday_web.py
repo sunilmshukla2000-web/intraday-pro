@@ -521,7 +521,7 @@ if should_run_scan:
                 total_inv = sum(float(r.get("fund_req_disp", 0.0)) for r in results)
                 roi_pct = (net_pl / total_inv * 100) if total_inv > 0 else 0.0
                 
-                st.session_state.score_text = f"Targets: {t_hits} | SL: {s_hits} | C2C: {c_hits + auto_exits} | Inv: ₹{total_inv:,.0f} | Net P/L: ₹{net_pl:,.2f} ({roi_pct:+.2f}%)"
+                st.session_state.score_text = f"Tgt: {t_hits} | SL: {s_hits} | C2C/3PM: {c_hits + auto_exits} | Inv: ₹{total_inv:,.0f} | Net P/L: ₹{net_pl:,.2f} ({roi_pct:+.2f}%)"
                 
         scan_msg = st.empty() # NAYA: Screen saaf karne wala Wiper 2
         if not auto_refresh:
