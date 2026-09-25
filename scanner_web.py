@@ -656,7 +656,24 @@ def run_stock_scanner(params):
                 }
                 log_func(f"🎯 NEW SIGNAL: {s} -> {sig} @ {cp:.2f}")
 
-            
+                # --- 🚀 TELEGRAM ALERT CODE START ---
+                try:
+                    import streamlit as st
+                    bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", "")
+                    chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "")
+                    
+                    if bot_token and chat_id:
+                        alert_tgt = (cp + t_dist) if action_type == 'BUY' else (cp - t_dist)
+                        alert_sl = (cp - s_dist) if action_type == 'BUY' else (cp + s_dist)
+                        
+                        alert_msg = f"🟢 <b>NEW INTRADAY TRADE</b>\n\nStock: {s}\nAction: {action_type}\nPrice: ₹{cp:.2f}\nQty: {trade_qty}\nTarget: ₹{alert_tgt:.2f} | SL: ₹{alert_sl:.2f}"
+                        
+                        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                        import requests
+                        requests.post(url, json={"chat_id": chat_id, "text": alert_msg, "parse_mode": "HTML"}, timeout=5)
+                except Exception as e:
+                    pass
+                # --- TELEGRAM ALERT CODE END ---
 
         except Exception as e:
             pass 
