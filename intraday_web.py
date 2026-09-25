@@ -514,8 +514,12 @@ if should_run_scan:
                 t_hits = sum(1 for r in results if "TARGET" in r.get("status", ""))
                 s_hits = sum(1 for r in results if "SL" in r.get("status", ""))
                 c_hits = sum(1 for r in results if "C2C" in r.get("status", ""))
-                net_pl = sum(float(str(r.get("pl_pts", "0")).replace("+", "").replace("-", "")) if "+" in str(r.get("pl_pts")) else -float(str(r.get("pl_pts", "0")).replace("-", "")) for r in results)
-                st.session_state.score_text = f"Targets: {t_hits} | C2C: {c_hits} | SL: {s_hits} | Net P/L: ₹{net_pl:.2f}"
+                auto_exits = sum(1 for r in results if "3PM" in r.get("status", "") or "MANUAL" in r.get("status", ""))
+                
+                # NAYA LOGIC: Seedha total Rupees sum karna
+                net_pl = sum(float(r.get("pl_rs_disp", 0.0)) for r in results)
+                
+                st.session_state.score_text = f"Targets: {t_hits} | SL: {s_hits} | C2C/Auto-Exit: {c_hits + auto_exits} | Net P/L: ₹{net_pl:.2f}"
                 
         scan_msg = st.empty() # NAYA: Screen saaf karne wala Wiper 2
         if not auto_refresh:
