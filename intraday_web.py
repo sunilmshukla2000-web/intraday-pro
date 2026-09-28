@@ -559,7 +559,7 @@ if should_run_scan:
         scan_msg = st.empty() # NAYA: Screen saaf karne wala Wiper 2
         if not auto_refresh:
             if results: st.rerun()
-            else: scan_msg.warning("⚠️ Koi naya Setup/Breakout nahi mila.")
+            else: scan_msg.warning("⚠️ Market is in No trading zone. So i am not suggesting for any trade")
         else:
             scan_msg.empty() # Purana message turant mita do
                 
