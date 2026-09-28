@@ -87,7 +87,7 @@ refresh_time = refresh_dict[selected_label]
 
 # watchlist_choice = st.sidebar.radio("1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
 watchlist_choice = st.sidebar.selectbox("📋 1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
-st.sidebar.markdown("---")
+# st.sidebar.markdown("---")
 
 
 
