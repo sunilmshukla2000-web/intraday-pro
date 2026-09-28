@@ -85,8 +85,131 @@ refresh_dict = {"30 Sec": 30, "1 Min": 60, "2 Min": 120, "3 Min": 180, "5 Min": 
 selected_label = col_r2.selectbox("Interval", options=list(refresh_dict.keys()), index=1, label_visibility="collapsed")
 refresh_time = refresh_dict[selected_label]
 
-watchlist_choice = st.sidebar.radio("1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
+# watchlist_choice = st.sidebar.radio("1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
+watchlist_choice = st.sidebar.selectbox("📋 1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
 st.sidebar.markdown("---")
+
+
+
+# =====================================================================
+# 4. TOP DASHBOARD (Live Index & VIX)
+# =====================================================================
+@st.cache_data(ttl=60)
+def get_live_indices():
+    data = {}
+    for idx in ["^NSEI", "^NSEBANK", "^INDIAVIX"]:
+        try:
+            df = yf.Ticker(idx).history(period="5d", interval="1d")
+            df = df.dropna(subset=['Close'])
+            if len(df) >= 2:
+                cp = float(df['Close'].iloc[-1])
+                prev_p = float(df['Close'].iloc[-2])
+                data[idx] = {"cp": cp, "diff": cp - prev_p, "pct": ((cp - prev_p) / prev_p) * 100}
+        except Exception: pass
+    return data if data else None
+
+idx_data = get_live_indices()
+m1, m2, m3, m4 = st.columns(4)
+
+if idx_data and "^NSEI" in idx_data: m1.metric("NIFTY 50", f"{idx_data['^NSEI']['cp']:,.2f}", f"{idx_data['^NSEI']['diff']:+.2f} ({idx_data['^NSEI']['pct']:+.2f}%)")
+else: m1.metric("NIFTY 50", "Loading...", "0.0")
+
+if idx_data and "^NSEBANK" in idx_data: m2.metric("BANK NIFTY", f"{idx_data['^NSEBANK']['cp']:,.2f}", f"{idx_data['^NSEBANK']['diff']:+.2f} ({idx_data['^NSEBANK']['pct']:+.2f}%)")
+else: m2.metric("BANK NIFTY", "Loading...", "0.0")
+
+if idx_data and "^INDIAVIX" in idx_data: m3.metric("INDIA VIX (Fear Gauge)", f"{idx_data['^INDIAVIX']['cp']:.2f}", f"{idx_data['^INDIAVIX']['pct']:+.2f}%", delta_color="inverse" if idx_data['^INDIAVIX']['pct'] > 0 else "normal")
+else: m3.metric("INDIA VIX", "Loading...", "0.0")
+
+with m4:
+    # ⚙️ Naya Smart Icon jisme click karne par popup khulega
+    with st.popover("⚙️ Set Gift Nifty Data"):
+        manual_prev = st.number_input("Prev Close", value=0.0)
+        manual_curr = st.number_input("Live Price", value=0.0)
+        
+    gift_diff = manual_curr - manual_prev
+    gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
+    st.metric("GIFT NIFTY", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
+    
+# st.markdown("---")
+
+# =====================================================================
+# 5. SEGMENT SELECTOR (MOVED TO SIDEBAR)
+# =====================================================================
+# st.sidebar.markdown("---")
+with st.sidebar.expander("🔍 1. Segments to Scan", expanded=True):
+    auto_n = st.checkbox("NIFTY", value=True)
+    auto_bn = st.checkbox("BANKNIFTY", value=False)
+    auto_eq = st.checkbox("STOCKS (Cash Eq)", value=False)
+    auto_opt = st.checkbox("STOCK-OPT (Option)", value=False)
+
+# =====================================================================
+# 🔐 2. SECURE PROFILE + PIN SYSTEM (SIDEBAR SHIFTED)
+# =====================================================================
+m_user, m_pwd, m_totp, m_api_key = "", "", "", ""
+
+with st.sidebar.expander("🔐 2. Profile & PIN", expanded=True):
+    if not st.session_state.get("is_logged_in", False):
+        try:
+            profiles = list(st.secrets["profiles"].keys())
+        except:
+            profiles = []
+            
+        if profiles:
+            pc1, pc2 = st.columns(2)
+            selected_profile = pc1.selectbox("Profile", options=[p.upper() for p in profiles], label_visibility="collapsed")
+            entered_pin = pc2.text_input("PIN", type="password", max_chars=4, label_visibility="collapsed", placeholder="Enter PIN")
+            
+            if entered_pin:
+                true_profile = selected_profile.lower()
+                correct_pin = str(st.secrets["profiles"][true_profile]["pin"])
+                
+                if entered_pin == correct_pin:
+                    st.session_state.m_user = st.secrets["profiles"][true_profile]["user_id"]
+                    st.session_state.m_pwd = st.secrets["profiles"][true_profile]["password"]
+                    st.session_state.m_totp = st.secrets["profiles"][true_profile]["totp_secret"]
+                    st.session_state.m_api_key = st.secrets["profiles"][true_profile]["api_key"]
+                    st.success("✅ PIN Verified!")
+                else:
+                    st.error("❌ Wrong PIN!")
+        else:
+            st.warning("⚠️ Secrets file missing.")
+    else:
+        st.success("✅ Profile Logged In")
+
+# Session state se safe credentials nikalna engine ke liye
+m_user = st.session_state.get("m_user", "")
+m_pwd = st.session_state.get("m_pwd", "")
+m_totp = st.session_state.get("m_totp", "")
+m_api_key = st.session_state.get("m_api_key", "")
+
+is_live_algo_on = st.session_state.get("master_switch_key", False)
+
+# =====================================================================
+# 🔴 3. LIVE MSTOCK EXECUTION ENGINE (SIDEBAR SHIFTED)
+# =====================================================================
+with st.sidebar.expander("🔴 3. MStock Live & Capital", expanded=True):
+    auto_on = st.checkbox("🔴 MASTER SWITCH (Real Money)", value=is_live_algo_on, key="master_switch_key")
+    
+    if auto_on:
+        st.error("⚠️ DANGER: REAL MONEY ALGO IS ACTIVE")
+    else:
+        st.info("ℹ️ Paper Trade Mode (1 Qty/Lot)")
+        
+    # Sidebar ko compact rakhne ke liye 2 columns me inputs
+    ex_c1, ex_c2 = st.columns(2)
+    stk_cap = ex_c1.number_input("Capital ₹", value=10000.0, step=1000.0)
+    idx_lots = ex_c2.number_input("Index Lots", value=1, step=1)
+    opt_lots = ex_c1.number_input("Stk-Opt Lots", value=1, step=1)
+# ----
+# =====================================================================
+# 🔍 4. STRATEGY FILTERS (SIDEBAR SHIFTED)
+# =====================================================================
+with st.sidebar.expander("🔍 4. Strategy Filters", expanded=True):
+    f_c1, f_c2 = st.columns(2)
+    ema_filter = f_c1.checkbox("📉 9-EMA", value=True)
+    hide_wide = f_c2.checkbox("🚫 Hide Wide", value=True)
+    triple_conf = f_c1.checkbox("📈 Trend Sync", value=True)
+    time_master = f_c2.checkbox("⏱️ Time Master", value=True)
 
 current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
@@ -158,122 +281,6 @@ with st.sidebar.expander("🎛️ Sliders (RSI, Vol, ORB)", expanded=False):
         time.sleep(0.5)
         st.rerun()
 
-with st.sidebar.expander("🎁 GiftNifty Manual Data", expanded=False):
-    manual_prev = st.number_input("Prev Close", value=0.0)
-    manual_curr = st.number_input("Live Price", value=0.0)
-
-# =====================================================================
-# 4. TOP DASHBOARD (Live Index & VIX)
-# =====================================================================
-@st.cache_data(ttl=60)
-def get_live_indices():
-    data = {}
-    for idx in ["^NSEI", "^NSEBANK", "^INDIAVIX"]:
-        try:
-            df = yf.Ticker(idx).history(period="5d", interval="1d")
-            df = df.dropna(subset=['Close'])
-            if len(df) >= 2:
-                cp = float(df['Close'].iloc[-1])
-                prev_p = float(df['Close'].iloc[-2])
-                data[idx] = {"cp": cp, "diff": cp - prev_p, "pct": ((cp - prev_p) / prev_p) * 100}
-        except Exception: pass
-    return data if data else None
-
-idx_data = get_live_indices()
-m1, m2, m3, m4 = st.columns(4)
-
-if idx_data and "^NSEI" in idx_data: m1.metric("NIFTY 50", f"{idx_data['^NSEI']['cp']:,.2f}", f"{idx_data['^NSEI']['diff']:+.2f} ({idx_data['^NSEI']['pct']:+.2f}%)")
-else: m1.metric("NIFTY 50", "Loading...", "0.0")
-
-if idx_data and "^NSEBANK" in idx_data: m2.metric("BANK NIFTY", f"{idx_data['^NSEBANK']['cp']:,.2f}", f"{idx_data['^NSEBANK']['diff']:+.2f} ({idx_data['^NSEBANK']['pct']:+.2f}%)")
-else: m2.metric("BANK NIFTY", "Loading...", "0.0")
-
-if idx_data and "^INDIAVIX" in idx_data: m3.metric("INDIA VIX (Fear Gauge)", f"{idx_data['^INDIAVIX']['cp']:.2f}", f"{idx_data['^INDIAVIX']['pct']:+.2f}%", delta_color="inverse" if idx_data['^INDIAVIX']['pct'] > 0 else "normal")
-else: m3.metric("INDIA VIX", "Loading...", "0.0")
-
-gift_diff = manual_curr - manual_prev
-gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
-m4.metric("GIFT NIFTY (Sentiment)", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
-st.markdown("---")
-
-# =====================================================================
-# 5. SEGMENT SELECTOR & LIVE ALGO ENGINE
-# =====================================================================
-st.markdown("### 🔍 1. Select Segments to Scan (Screen View)")
-c1, c2, c3, c4 = st.columns(4)
-auto_n = c1.checkbox("NIFTY", value=True)
-auto_bn = c2.checkbox("BANKNIFTY", value=False)
-auto_eq = c3.checkbox("STOCKS (Cash Eq)", value=False)
-auto_opt = c4.checkbox("STOCK-OPT (Option)", value=False)
-
-st.write("")
-
-# =====================================================================
-# 🔐 SECURE PROFILE + PIN SYSTEM
-# =====================================================================
-m_user, m_pwd, m_totp, m_api_key = "", "", "", ""
-
-if not st.session_state.get("is_logged_in", False):
-    try:
-        profiles = list(st.secrets["profiles"].keys())
-    except:
-        profiles = []
-        
-    if profiles:
-        st.markdown("#### 🔐 Select Profile & Enter PIN")
-        pc1, pc2, pc3 = st.columns([1.5, 1.5, 3])
-        selected_profile = pc1.selectbox("Profile", options=[p.upper() for p in profiles], label_visibility="collapsed")
-        entered_pin = pc2.text_input("PIN", type="password", max_chars=4, label_visibility="collapsed", placeholder="Enter PIN")
-        
-        if entered_pin:
-            true_profile = selected_profile.lower()
-            correct_pin = str(st.secrets["profiles"][true_profile]["pin"])
-            
-            if entered_pin == correct_pin:
-                st.session_state.m_user = st.secrets["profiles"][true_profile]["user_id"]
-                st.session_state.m_pwd = st.secrets["profiles"][true_profile]["password"]
-                st.session_state.m_totp = st.secrets["profiles"][true_profile]["totp_secret"]
-                st.session_state.m_api_key = st.secrets["profiles"][true_profile]["api_key"]
-                pc3.success("✅ PIN Verified! Click 'MSTOCK LOGIN' below.")
-            else:
-                pc3.error("❌ Wrong PIN!")
-    else:
-        st.warning("⚠️ Secrets file missing or empty.")
-
-# Session state se safe credentials nikalna engine ke liye
-m_user = st.session_state.get("m_user", "")
-m_pwd = st.session_state.get("m_pwd", "")
-m_totp = st.session_state.get("m_totp", "")
-m_api_key = st.session_state.get("m_api_key", "")
-
-is_live_algo_on = st.session_state.get("master_switch_key", False)
-
-st.markdown("### 🔴 2. LIVE MSTOCK EXECUTION ENGINE")
-
-if is_live_algo_on:
-    st.markdown('''
-        <div style="background-color: rgba(231, 76, 60, 0.15); border: 2px solid #e74c3c; padding: 6px; border-radius: 6px; text-align: center; margin-bottom: 5px;">
-            <span style="color: #e74c3c; font-weight: bold; font-size: 16px;">⚠️ DANGER: REAL MONEY ALGO IS ACTIVE ⚠️</span>
-        </div>
-    ''', unsafe_allow_html=True)
-else:
-    st.info("ℹ️ NOTE: Master Switch is OFF. Engine will Paper Trade (1 Qty/Lot). Turn ON to fire real orders with Capital settings.")
-
-# --- YAHAN SE EXPANDER HATA DIYA AUR SAB EK LINE ME DAAL DIYA ---
-ec1, ec2, ec3, ec4 = st.columns([1.5, 1, 1, 1])
-
-with ec1:
-    st.write("") # Checkbox ko align karne ke liye thoda space
-    auto_on = st.checkbox("🔴 MASTER SWITCH (Real Money)", value=is_live_algo_on, key="master_switch_key")
-with ec2:
-    stk_cap = st.number_input("Capital ₹ (Stocks)", value=10000.0, step=1000.0)
-with ec3:
-    idx_lots = st.number_input("Index Lots", value=1, step=1)
-with ec4:
-    opt_lots = st.number_input("Stock Opt Lots", value=1, step=1)
-    
-st.markdown("---")
-
 # =====================================================================
 # 6. SCANNER CONNECTOR & TABLE VIEW
 # =====================================================================
@@ -281,13 +288,6 @@ if 'signal_tracker' not in st.session_state:
     st.session_state.signal_tracker = {}
 if 'score_text' not in st.session_state:
     st.session_state.score_text = "Targets: 0 | C2C: 0 | SL: 0 | Net P/L: ₹0.00"
-
-st.write("") 
-c1, c2, c3, c4 = st.columns(4)
-ema_filter = c1.checkbox("📉 9-EMA Filter", value=True)
-hide_wide = c2.checkbox("🚫 Hide Wide ORB", value=True)
-triple_conf = c3.checkbox("📈 Nifty Trend Sync", value=True)
-time_master = c4.checkbox("⏱️ Time Master (Strict)", value=True)
 
 import pytz
 ist = pytz.timezone('Asia/Kolkata')
