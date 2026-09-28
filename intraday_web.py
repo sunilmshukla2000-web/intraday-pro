@@ -328,6 +328,39 @@ with col_zone:
     # Time zone ko ek alag neat information box me daal diya
     st.info(f"⏱️ **{current_zone_name}** [{zone_status_color}]")
 
+# --helth monitor---
+# --- 🚦 LIVE SYSTEM HEALTH MONITOR ---
+import pytz
+from datetime import datetime
+
+# Backend se WebSocket ki real status check karna
+try:
+    import scanner_web 
+    is_connected = scanner_web.WS_CACHE.get("connected", False)
+except:
+    is_connected = False
+
+# Traffic Light Colors & Text
+if is_connected:
+    ws_status = "🟢 mStock API: CONNECTED & LIVE"
+    ws_color = "#27ae60" # Green
+else:
+    ws_status = "🔴 mStock API: DISCONNECTED (Refresh Page / F5)"
+    ws_color = "#c0392b" # Red
+
+ist = pytz.timezone('Asia/Kolkata')
+last_sync = datetime.now(ist).strftime("%H:%M:%S")
+
+# Beautiful HTML UI Panel for Streamlit
+st.markdown(f"""
+<div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 5px solid {ws_color}; margin-bottom: 20px; display: flex; justify-content: space-between; font-family: sans-serif; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
+    <span style="font-weight: bold; color: {ws_color};">{ws_status}</span>
+    <span style="font-weight: bold; color: #2980b9;">⚡ Spot Data: Dual Engine (Auto)</span>
+    <span style="color: #7f8c8d; font-weight: bold;">⏱️ Last Sync: {last_sync}</span>
+</div>
+""", unsafe_allow_html=True)
+
+
 # --- ROW 2: Full Width Dedicated Scoreboard ---
 st.markdown(f'''
     <div style="background-color: #e8f4f8; border-left: 5px solid #3498db; padding: 10px 15px; border-radius: 5px; margin-top: 5px; margin-bottom: 15px;">
