@@ -460,19 +460,27 @@ def run_stock_scanner(params):
                 pl_rs = 0.0
                 opt_live = 0.0
                 
-                if opt_sym and opt_entry > 0:
-                    live_opt_price = get_live_option_premium(opt_sym, m_api_key)
-                    if live_opt_price > 0:
-                        opt_live = live_opt_price
-                        opt_pts_diff = (live_opt_price - opt_entry) # Option Premium Points
-                        pl_rs = opt_pts_diff * trade_qty
-                        signal_tracker[s]["opt"] = f"{opt_sym.split('-')[-1]} ({opt_entry:.1f} ➔ {live_opt_price:.1f})"
-                else:
-                    pl_rs = final_pts_diff * trade_qty # Cash Profit
+                # --- NAYA LOGIC: Cash aur Option ke P/L alag calculate karna ---
+                opt_pts_diff = 0.0
+                pl_rs = 0.0
+                opt_live = 0.0
                 
-                if opt_sym:
+                if opt_sym: # Agar option hai, toh usko cash me fallback nahi karna hai
+                    if opt_entry > 0:
+                        live_opt_price = get_live_option_premium(opt_sym, m_api_key)
+                        if live_opt_price > 0:
+                            opt_live = live_opt_price
+                            opt_pts_diff = (live_opt_price - opt_entry) # Option Premium Points
+                            pl_rs = opt_pts_diff * trade_qty
+                            signal_tracker[s]["opt"] = f"{opt_sym.split('-')[-1]} ({opt_entry:.1f} ➔ {live_opt_price:.1f})"
+                    else:
+                        pl_rs = 0.0 # Agar premium fetch nahi hua toh P/L zero rakho
+                        
+                    fund_req = opt_entry * trade_qty # Option fund (Premium x Qty)
                     strike_lot_str = f"{opt_sym.split('-')[-1]}"
                 else:
+                    pl_rs = final_pts_diff * trade_qty # Cash Profit
+                    fund_req = entry * trade_qty # Cash fund (Spot x Qty)
                     strike_lot_str = "CASH (Eq)"
 
                 tgt_price = (entry + t_dist) if action_type == 'BUY' else (entry - t_dist)
@@ -483,8 +491,6 @@ def run_stock_scanner(params):
                     tgt_sl_str = f"{tgt_price:.2f} | {sl_price:.2f} 🔄"
                 else:
                     tgt_sl_str = f"{tgt_price:.2f} | {sl_price:.2f}"
-                    
-                fund_req = (opt_entry * trade_qty) if (opt_sym and opt_entry > 0) else (entry * trade_qty)
 
                 # --- NAYA RESULT FORMAT (Dono data ek sath) ---
                 res = {
