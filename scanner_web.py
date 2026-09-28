@@ -154,12 +154,22 @@ def get_smart_option(stock, price, signal_type):
     if match.empty: return None, f"No {opt_type} Found", 1
         
     match['expiry_dt'] = pd.to_datetime(match['expiry'], errors='coerce')
-    future_match = match[match['expiry_dt'] >= pd.Timestamp.now().normalize()]
+    now_dt = pd.Timestamp.now().normalize()
+    
+    future_match = match[match['expiry_dt'] >= now_dt]
     if future_match.empty: return None, "All Expiries Old", 1
         
-    match = future_match
-    nearest_exp = match['expiry_dt'].min()
-    match_curr = match[match['expiry_dt'] == nearest_exp].copy()
+    # --- 🌟 SMART ROLLOVER LOGIC (EXPIRY WEEK PROTECTION) ---
+    unique_expiries = sorted(future_match['expiry_dt'].unique())
+    nearest_exp = unique_expiries[0]
+    
+    # Agar expiry me 4 din ya usse kam bache hain (matlab Expiry Week shuru ho gaya hai)
+    # Toh safely agle mahine (next expiry) ki chain par shift ho jao
+    days_to_expiry = (nearest_exp - now_dt).days
+    if days_to_expiry <= 4 and len(unique_expiries) > 1:
+        nearest_exp = unique_expiries[1] 
+        
+    match_curr = future_match[future_match['expiry_dt'] == nearest_exp].copy()
     
     match_curr['diff'] = abs(pd.to_numeric(match_curr['strike'], errors='coerce') - price)
     top_5 = match_curr.sort_values('diff').head(5)
