@@ -455,26 +455,48 @@ def run_stock_scanner(params):
                         
                 final_pts_diff = (cp - entry) if action_type == "BUY" else (entry - cp)
                 
-                # --- NAYA LOGIC: Cash aur Option ke P/L alag calculate karna ---
+                # --- NAYA LOGIC: DUAL ENGINE (Spot + Option) WITH AUTO-RETRY ---
                 opt_pts_diff = 0.0
                 pl_rs = 0.0
                 opt_live = 0.0
                 
-                # --- NAYA LOGIC: Cash aur Option ke P/L alag calculate karna ---
-                opt_pts_diff = 0.0
-                pl_rs = 0.0
-                opt_live = 0.0
+                # 🌟 SMART SPOT FETCH (Primary: mStock, Fallback: Yahoo)
+                try:
+                    # 1. Pehle mStock Broker se Spot (Cash) ka live price mango
+                    live_spot_price = get_live_spot_price(s, m_api_key)
+                    
+                    if live_spot_price <= 0:
+                        # 2. Agar broker server down hai ya price 0 de, tabhi Yahoo Finance par jao
+                        yf_sym = "^NSEI" if s == "NIFTY_IDX" else ("^NSEBANK" if s == "BANKNIFTY_IDX" else f"{s}.NS")
+                        fast_df = yf.download(yf_sym, period="1d", interval="1m", progress=False)
+                        if not fast_df.empty:
+                            live_spot_price = float(fast_df['Close'].iloc[-1])
+                            
+                    if live_spot_price > 0:
+                        # Cash ke P/L points aur Table me Spot LTP turant update karo
+                        final_pts_diff = (live_spot_price - entry) if action_type == 'BUY' else (entry - live_spot_price)
+                        if "last_res" in signal_tracker[s]:
+                            signal_tracker[s]["last_res"]["p"] = live_spot_price
+                except Exception:
+                    pass
+                # ---------------------------------------------------------------
                 
-                if opt_sym: # Agar option hai, toh usko cash me fallback nahi karna hai
-                    if opt_entry > 0:
-                        live_opt_price = get_live_option_premium(opt_sym, m_api_key)
-                        if live_opt_price > 0:
-                            opt_live = live_opt_price
-                            opt_pts_diff = (live_opt_price - opt_entry) # Option Premium Points
-                            pl_rs = opt_pts_diff * trade_qty
-                            signal_tracker[s]["opt"] = f"{opt_sym.split('-')[-1]} ({opt_entry:.1f} ➔ {live_opt_price:.1f})"
+                if opt_sym: # Agar option hai
+                    # Bina condition ke hamesha broker se live price mango
+                    live_opt_price = get_live_option_premium(opt_sym, m_api_key)
+                    
+                    if live_opt_price > 0:
+                        # 🌟 AUTO-RETRY LOGIC: Agar shuruwat me galti se 0 tha, toh live price ko Entry maan lo!
+                        if opt_entry == 0.0 or opt_entry is None:
+                            opt_entry = live_opt_price
+                            signal_tracker[s]["opt_entry"] = live_opt_price # Memory update
+                            
+                        opt_live = live_opt_price
+                        opt_pts_diff = (live_opt_price - opt_entry) # Option Premium Points
+                        pl_rs = opt_pts_diff * trade_qty
+                        signal_tracker[s]["opt"] = f"{opt_sym.split('-')[-1]} ({opt_entry:.1f} ➔ {live_opt_price:.1f})"
                     else:
-                        pl_rs = 0.0 # Agar premium fetch nahi hua toh P/L zero rakho
+                        pl_rs = 0.0 # Agar abhi bhi broker 0 de raha hai, toh 0 rakho
                         
                     fund_req = opt_entry * trade_qty # Option fund (Premium x Qty)
                     strike_lot_str = f"{opt_sym.split('-')[-1]}"
