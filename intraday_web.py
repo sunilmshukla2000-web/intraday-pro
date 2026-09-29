@@ -52,11 +52,46 @@ with h_col2:
 with h_col3:
     with st.popover("⏰ Auto-Exit", use_container_width=True):
         from datetime import time as dtime
+        import json, os
+        
+        # File name for saving times (Har user ki apni file)
+        time_file = f"exit_times_{st.session_state.get('m_user', 'guest')}.json"
+        
+        # Default times agar pehli baar khol rahe hain
+        def_times = {"stock": "15:00", "opt": "15:15", "nifty": "15:15", "bank": "15:15"}
+        
+        # Memory (File) se purane saved times nikalna
+        if os.path.exists(time_file):
+            try:
+                with open(time_file, "r") as f:
+                    saved_times = json.load(f)
+                    def_times.update(saved_times)
+            except: pass
+        
+        # Text to Time converter
+        def str_to_time(t_str):
+            h, m = map(int, t_str.split(":"))
+            return dtime(h, m)
+
         st.markdown("**Segment Exit Time**")
-        exit_stock = st.time_input("Stocks (Cash)", dtime(15, 0))
-        exit_opt = st.time_input("Stock-Options", dtime(15, 15))
-        exit_nifty = st.time_input("NIFTY Index", dtime(15, 15))
-        exit_bank = st.time_input("BANKNIFTY", dtime(15, 15))
+        exit_stock = st.time_input("Stocks", str_to_time(def_times["stock"]))
+        exit_opt = st.time_input("Options", str_to_time(def_times["opt"]))
+        exit_nifty = st.time_input("NIFTY", str_to_time(def_times["nifty"]))
+        exit_bank = st.time_input("BANKNIFTY", str_to_time(def_times["bank"]))
+        
+        # Save Button ka magic
+        if st.button("💾 Save Times", use_container_width=True):
+            new_times = {
+                "stock": exit_stock.strftime("%H:%M"),
+                "opt": exit_opt.strftime("%H:%M"),
+                "nifty": exit_nifty.strftime("%H:%M"),
+                "bank": exit_bank.strftime("%H:%M")
+            }
+            with open(time_file, "w") as f:
+                json.dump(new_times, f)
+            st.success("✅ Times Saved Permanently!")
+            time.sleep(1)
+            st.rerun()
 
 with h_col4:
     with st.popover("⚙️ Setting", use_container_width=True):
