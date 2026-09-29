@@ -114,7 +114,7 @@ if 'sl_state' not in st.session_state:
 # =====================================================================
 st.sidebar.header("⚙️ Advanced Control Panel")
 
-col_r1, col_r2 = st.sidebar.columns([1.8, 1])
+col_r1, col_r2 = st.sidebar.columns([1.6, 1])
 auto_refresh = col_r1.checkbox("🔄 Auto-Refresh", value=False)
 refresh_dict = {"30 Sec": 30, "1 Min": 60, "2 Min": 120, "3 Min": 180, "5 Min": 300}
 selected_label = col_r2.selectbox("Interval", options=list(refresh_dict.keys()), index=1, label_visibility="collapsed")
