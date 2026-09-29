@@ -27,7 +27,15 @@ st.markdown("""
 st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Execution)</p>', unsafe_allow_html=True)
 import pytz
 ist = pytz.timezone('Asia/Kolkata')
-st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
+
+# ⚙️ TOP HEADER WITH GIFT NIFTY SETTING
+h_col1, h_col2 = st.columns([9, 1])
+with h_col1:
+    st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
+with h_col2:
+    with st.popover("⚙️ Setting"):
+        manual_prev = st.number_input("Prev Close", value=0.0)
+        manual_curr = st.number_input("Live Price", value=0.0)
 st.markdown("---")
 
 # =====================================================================
@@ -123,18 +131,10 @@ if idx_data and "^INDIAVIX" in idx_data: m3.metric("INDIA VIX (Fear Gauge)", f"{
 else: m3.metric("INDIA VIX", "Loading...", "0.0")
 
 with m4:
-    # ⚙️ Icon aur Metric alag-alag columns me (Alignment fix)
-    pop_col, met_col = st.columns([1.5, 4])
-    with pop_col:
-        st.write("") # Spacer taaki button sahi level par aaye
-        with st.popover("⚙️"):
-            manual_prev = st.number_input("Prev Close", value=0.0)
-            manual_curr = st.number_input("Live Price", value=0.0)
-            
-    with met_col:
-        gift_diff = manual_curr - manual_prev
-        gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
-        st.metric("GIFT NIFTY", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
+    # 🚀 CLEAN METRIC (Purana popover hata diya taaki duplicate error na aaye)
+    gift_diff = manual_curr - manual_prev
+    gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
+    st.metric("GIFT NIFTY", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
     
 # st.markdown("---")
 
@@ -463,7 +463,7 @@ if eod_btn:
     else:
         st.warning("⚠️ No LIVE positions to square off.")
 
-st.write("") 
+# st.write("") 
 table_filter = st.radio("Filter Trades:", ["All", "🟢 Active", "🔴 Closed", "🏦 mStock Orders"], horizontal=True, label_visibility="collapsed")
 st.markdown("---")
 
