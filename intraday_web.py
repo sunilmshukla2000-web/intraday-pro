@@ -5,6 +5,37 @@ import pandas_ta as ta
 import os
 import json
 import time
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
+
+# --- FIREBASE CLOUD MEMORY SETUP ---
+if not firebase_admin._apps:
+    try:
+        # Streamlit secrets se chaabi uthana
+        cred_dict = dict(st.secrets["firebase"])
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred, {
+            # ⚠️ DHYAN DEIN: Yahan apne Firebase console se Realtime Database ka URL copy karke daalna hai
+            'databaseURL': 'https://intraday-133e9-default-rtdb.firebaseio.com/' 
+        })
+    except Exception as e:
+        pass # Chupchap fail ho jayega agar local me keys nahi mili
+
+# Universal Helper Functions (Cloud Save/Load)
+def save_cloud_data(user_id, category, data):
+    try:
+        ref = db.reference(f'intraday_pro/users/{user_id}/{category}')
+        ref.set(data)
+    except: pass
+
+def load_cloud_data(user_id, category, default_data):
+    try:
+        ref = db.reference(f'intraday_pro/users/{user_id}/{category}')
+        data = ref.get()
+        return data if data else default_data
+    except:
+        return default_data
 from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -52,34 +83,23 @@ with h_col2:
 with h_col3:
     with st.popover("⏰ Auto-Exit", use_container_width=True):
         from datetime import time as dtime
-        import json, os
         
-        # File name for saving times (Har user ki apni file)
-        time_file = f"exit_times_{st.session_state.get('m_user', 'guest')}.json"
-        
-        # Default times agar pehli baar khol rahe hain
+        current_user = st.session_state.get('m_user', 'guest')
         def_times = {"stock": "15:00", "opt": "15:15", "nifty": "15:15", "bank": "15:15"}
         
-        # Memory (File) se purane saved times nikalna
-        if os.path.exists(time_file):
-            try:
-                with open(time_file, "r") as f:
-                    saved_times = json.load(f)
-                    def_times.update(saved_times)
-            except: pass
+        # Cloud se saved times lana (Ya default use karna)
+        saved_times = load_cloud_data(current_user, "exit_times", def_times)
         
-        # Text to Time converter
         def str_to_time(t_str):
             h, m = map(int, t_str.split(":"))
             return dtime(h, m)
 
         st.markdown("**Segment Exit Time**")
-        exit_stock = st.time_input("Stocks", str_to_time(def_times["stock"]))
-        exit_opt = st.time_input("Options", str_to_time(def_times["opt"]))
-        exit_nifty = st.time_input("NIFTY", str_to_time(def_times["nifty"]))
-        exit_bank = st.time_input("BANKNIFTY", str_to_time(def_times["bank"]))
+        exit_stock = st.time_input("Stocks", str_to_time(saved_times["stock"]))
+        exit_opt = st.time_input("Options", str_to_time(saved_times["opt"]))
+        exit_nifty = st.time_input("NIFTY", str_to_time(saved_times["nifty"]))
+        exit_bank = st.time_input("BANKNIFTY", str_to_time(saved_times["bank"]))
         
-        # Save Button ka magic
         if st.button("💾 Save Times", use_container_width=True):
             new_times = {
                 "stock": exit_stock.strftime("%H:%M"),
@@ -87,9 +107,9 @@ with h_col3:
                 "nifty": exit_nifty.strftime("%H:%M"),
                 "bank": exit_bank.strftime("%H:%M")
             }
-            with open(time_file, "w") as f:
-                json.dump(new_times, f)
-            st.success("✅ Times Saved Permanently!")
+            # Data seedha Firebase Cloud pe gaya!
+            save_cloud_data(current_user, "exit_times", new_times)
+            st.success("✅ Times Saved to Cloud!")
             time.sleep(1)
             st.rerun()
 
