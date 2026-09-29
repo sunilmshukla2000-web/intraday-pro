@@ -259,14 +259,18 @@ with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
                 correct_pin = str(st.secrets["profiles"][true_profile]["pin"])
                 
                 if entered_pin == correct_pin:
-                    st.session_state.m_profile_name = selected_profile # Naam save ho gaya
+                    st.session_state.m_profile_name = selected_profile 
                     st.session_state.m_user = st.secrets["profiles"][true_profile]["user_id"]
                     st.session_state.m_pwd = st.secrets["profiles"][true_profile]["password"]
                     st.session_state.m_totp = st.secrets["profiles"][true_profile]["totp_secret"]
                     st.session_state.m_api_key = st.secrets["profiles"][true_profile]["api_key"]
-                    st.success("✅ PIN Verified!")
+                    
+                    # 🔥 BUG FIX: Jaise hi login ho, user ke personal sliders Cloud se fetch kar lo
+                    st.session_state.sl_state = load_cloud_data(st.session_state.m_user, "sliders", DEFAULT_SLIDERS.copy())
+                    
+                    st.success("✅ PIN Verified & Settings Synced!")
                     time.sleep(0.5)
-                    st.rerun() # Turant refresh karega taaki dabba band ho jaye
+                    st.rerun() 
                 else:
                     st.error("❌ Wrong PIN!")
         else:
@@ -274,13 +278,16 @@ with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
     else:
         st.success(f"✅ Welcome, {logged_name}!")
         if st.button("Logout Profile", width="stretch"):
-            # Logout par saara data clear kar do
             st.session_state.m_profile_name = ""
-            st.session_state.is_logged_in = False # API login ko bhi reset karo
+            st.session_state.is_logged_in = False 
             st.session_state.m_user = ""
             st.session_state.m_pwd = ""
             st.session_state.m_totp = ""
             st.session_state.m_api_key = ""
+            
+            # 🔥 BUG FIX: Logout hote hi wapas 'guest' wale default sliders laga do
+            st.session_state.sl_state = load_cloud_data('guest', "sliders", DEFAULT_SLIDERS.copy())
+            
             st.rerun()
 
 # Session state se safe credentials nikalna engine ke liye
