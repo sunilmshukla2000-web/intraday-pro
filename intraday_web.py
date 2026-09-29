@@ -21,6 +21,9 @@ st.markdown("""
     .big-font { font-size:30px !important; font-weight: bold; color: #3498db; }
     .sub-font { font-size:14px !important; color: gray; }
     div[data-testid="stMetricValue"] { font-size: 22px; }
+    /* 🔥 TARGETED GAP FIX 🔥 */
+    hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+    div[data-testid="metric-container"] { margin-top: -15px !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -29,7 +32,7 @@ import pytz
 ist = pytz.timezone('Asia/Kolkata')
 
 # ⚙️ TOP HEADER WITH GIFT NIFTY SETTING
-h_col1, h_col2 = st.columns([9, 1])
+h_col1, h_col2 = st.columns([8.5, 1.5])
 with h_col1:
     st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
 with h_col2:
@@ -367,8 +370,10 @@ with col_btn3:
     eod_btn = st.button("⏹️ SQUARE-OFF", width="stretch")
     
 with col_zone:
-    # Time zone ko ek alag neat information box me daal diya
-    st.info(f"⏱️ **{current_zone_name}** [{zone_status_color}]")
+    # Time zone ko baki buttons ki height ke barabar slim kar diya
+    bg_color = "#e8f4f8" if is_active_zone else "#fdedec"
+    text_color = "#2980b9" if is_active_zone else "#c0392b"
+    st.markdown(f'''<div style="background-color: {bg_color}; color: {text_color}; padding: 7px 10px; border-radius: 8px; text-align: center; border: 1px solid {text_color}; font-weight: bold; font-size: 15px; margin-top: 2px; white-space: nowrap;">⏱️ {current_zone_name} [{zone_status_color}]</div>''', unsafe_allow_html=True)
 
 # --helth monitor---
 # --- 🚦 LIVE SYSTEM HEALTH MONITOR & PING LOG ---
