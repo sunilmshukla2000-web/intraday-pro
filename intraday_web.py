@@ -235,10 +235,7 @@ with st.sidebar.expander(engine_title, expanded=True):
     stk_cap = ex_c1.number_input("Capital ₹", value=10000.0, step=1000.0)
     idx_lots = ex_c2.number_input("Index Lots", value=1, step=1)
     opt_lots = ex_c1.number_input("Stk-Opt Lots", value=1, step=1)
-# ----
-# =====================================================================
-# 🔍 4. STRATEGY FILTERS (SIDEBAR SHIFTED)
-# =====================================================================
+
 # =====================================================================
 # 🔍 4. STRATEGY FILTERS (DYNAMIC TITLE)
 # =====================================================================
@@ -397,37 +394,46 @@ if "ping_logs" not in st.session_state:
 
 # Simulated live ping latency & status record
 if is_connected:
-    ping_ms = random.randint(12, 35) # Live feeling ke liye latency simulation (ms)
-    log_line = f"<span style='color: #2ecc71;'>[{last_sync}] 🟢 PING mStock Server... SUCCESS ({ping_ms}ms)</span>"
-    ws_status = "🟢 mStock API: CONNECTED & LIVE"
+    ping_ms = random.randint(12, 35) 
+    log_line = f"<span style='color: #2ecc71;'>[{last_sync}] 🟢 PING mStock... SUCCESS ({ping_ms}ms)</span>"
+    ws_status = "🟢 API: LIVE"  # Text chhota kar diya
     ws_color = "#27ae60"
 else:
-    log_line = f"<span style='color: #e74c3c;'>[{last_sync}] 🔴 ERROR: CONNECTION TIMEOUT / API DISCONNECTED!</span>"
-    ws_status = "🔴 mStock API: DISCONNECTED"
+    log_line = f"<span style='color: #e74c3c;'>[{last_sync}] 🔴 ERROR: CONNECTION TIMEOUT!</span>"
+    ws_status = "🔴 API: OFFLINE"  # Text chhota kar diya
     ws_color = "#c0392b"
 
-# Naya log list me sabse upar daalo (Memory safe rakhne ke liye max 50 records)
+# Naya log list me sabse upar daalo
 st.session_state.ping_logs.insert(0, log_line)
 st.session_state.ping_logs = st.session_state.ping_logs[:50]
 
-# UI Layout: Health Bar aur Log Button aamne-saamne
-hm_col1, hm_col2 = st.columns([8.5, 1.5])
+# UI Layout: CSS ko bahar nikala taaki wo buttons ko neeche na dhake
+st.markdown('''<style>
+    div.stButton > button { height: 42px !important; padding: 0px 5px !important; font-size: 14px !important; white-space: nowrap !important; }
+    div[data-testid="stPopover"] > button { height: 42px !important; padding: 0px 5px !important; font-size: 14px !important; width: 100% !important; white-space: nowrap !important; }
+</style>''', unsafe_allow_html=True)
+
+# Ratio thoda aur badhaya taaki left sidebar khulne par Logs 2 line me na jaye
+hm_col1, hm_col2, hm_col3 = st.columns([7.2, 1.4, 1.4])
 
 with hm_col1:
+    # Health bar ki height fix ki (42px) taaki buttons se 100% match kare
     st.markdown(f"""
-    <div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 5px solid {ws_color}; margin-bottom: 5px; display: flex; justify-content: space-between; font-family: sans-serif; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
+    <div style="background-color: #f8f9fa; padding: 10px 12px; border-radius: 8px; border-left: 5px solid {ws_color}; display: flex; justify-content: space-between; align-items: center; font-family: sans-serif; box-shadow: 0px 2px 5px rgba(0,0,0,0.05); font-size: 13.5px; white-space: nowrap; height: 42px; margin-top: 1px;">
         <span style="font-weight: bold; color: {ws_color};">{ws_status}</span>
-        <span style="font-weight: bold; color: #2980b9;">⚡ Spot Data: Dual Engine (Auto)</span>
-        <span style="color: #7f8c8d; font-weight: bold;">⏱️ Last Sync: {last_sync}</span>
+        <span style="font-weight: bold; color: #2980b9;">⚡ Spot: Auto Engine</span>
+        <span style="color: #7f8c8d; font-weight: bold;">⏱️ {last_sync}</span>
     </div>
     """, unsafe_allow_html=True)
 
 with hm_col2:
-    st.write("") # Thoda spacer align karne ke liye
-    with st.popover("📟 Ping Logs"):
-        st.markdown("**📡 mStock API Heartbeat**")
+    if st.button("🔄 Sync", use_container_width=True):
+        st.rerun()
+
+with hm_col3:
+    with st.popover("📟 Logs", use_container_width=True):
+        st.markdown("**📡 API Heartbeat**")
         logs_html = "<br>".join(st.session_state.ping_logs)
-        # Black Terminal CSS Effect
         st.markdown(f'''
         <div style="background-color: #0c0c0c; padding: 10px; border-radius: 5px; height: 250px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6;">
             {logs_html}
