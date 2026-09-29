@@ -85,8 +85,10 @@ refresh_dict = {"30 Sec": 30, "1 Min": 60, "2 Min": 120, "3 Min": 180, "5 Min": 
 selected_label = col_r2.selectbox("Interval", options=list(refresh_dict.keys()), index=1, label_visibility="collapsed")
 refresh_time = refresh_dict[selected_label]
 
-# watchlist_choice = st.sidebar.radio("1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
-watchlist_choice = st.sidebar.selectbox("📋 1. Watchlist:", ["Nifty 50", "Nifty 100", "All F&O"], index=0)
+# --- WATCHLIST SIDE-BY-SIDE ---
+col_w1, col_w2 = st.sidebar.columns([1.8, 1])
+col_w1.markdown("<div style='margin-top: 8px; font-weight: bold; color: gray;'>📋 WatchList:</div>", unsafe_allow_html=True)
+watchlist_choice = col_w2.selectbox("Watchlist", ["Nifty 50", "Nifty 100", "All F&O"], index=0, label_visibility="collapsed")
 # st.sidebar.markdown("---")
 
 
@@ -121,34 +123,50 @@ if idx_data and "^INDIAVIX" in idx_data: m3.metric("INDIA VIX (Fear Gauge)", f"{
 else: m3.metric("INDIA VIX", "Loading...", "0.0")
 
 with m4:
-    # ⚙️ Naya Smart Icon jisme click karne par popup khulega
-    with st.popover("⚙️ Set Gift Nifty Data"):
-        manual_prev = st.number_input("Prev Close", value=0.0)
-        manual_curr = st.number_input("Live Price", value=0.0)
-        
-    gift_diff = manual_curr - manual_prev
-    gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
-    st.metric("GIFT NIFTY", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
+    # ⚙️ Icon aur Metric alag-alag columns me (Alignment fix)
+    pop_col, met_col = st.columns([1.5, 4])
+    with pop_col:
+        st.write("") # Spacer taaki button sahi level par aaye
+        with st.popover("⚙️"):
+            manual_prev = st.number_input("Prev Close", value=0.0)
+            manual_curr = st.number_input("Live Price", value=0.0)
+            
+    with met_col:
+        gift_diff = manual_curr - manual_prev
+        gift_str = f"{'BULLISH 🚀' if gift_diff > 0 else 'BEARISH 🔻'}" if manual_prev > 0 else "Pending..."
+        st.metric("GIFT NIFTY", gift_str, f"{gift_diff:+.2f}" if manual_prev > 0 else None, delta_color="normal")
     
 # st.markdown("---")
 
 # =====================================================================
-# 5. SEGMENT SELECTOR (MOVED TO SIDEBAR)
+# 5. SEGMENT SELECTOR (WITH DYNAMIC COUNT)
 # =====================================================================
-# st.sidebar.markdown("---")
-with st.sidebar.expander("🔍 1. Segments to Scan", expanded=True):
-    auto_n = st.checkbox("NIFTY", value=True)
-    auto_bn = st.checkbox("BANKNIFTY", value=False)
-    auto_eq = st.checkbox("STOCKS (Cash Eq)", value=False)
-    auto_opt = st.checkbox("STOCK-OPT (Option)", value=False)
+# Pehle memory se check karo kya select hai taaki title me number dikhe
+s_n = st.session_state.get("chk_n", True)
+s_bn = st.session_state.get("chk_bn", False)
+s_eq = st.session_state.get("chk_eq", False)
+s_opt = st.session_state.get("chk_opt", False)
+selected_count = sum([s_n, s_bn, s_eq, s_opt])
+
+with st.sidebar.expander(f"🔍 1. Segments to Scan ({selected_count}/4)", expanded=True):
+    auto_n = st.checkbox("NIFTY", value=s_n, key="chk_n")
+    auto_bn = st.checkbox("BANKNIFTY", value=s_bn, key="chk_bn")
+    auto_eq = st.checkbox("STOCKS (Cash Eq)", value=s_eq, key="chk_eq")
+    auto_opt = st.checkbox("STOCK-OPT (Option)", value=s_opt, key="chk_opt")
 
 # =====================================================================
-# 🔐 2. SECURE PROFILE + PIN SYSTEM (SIDEBAR SHIFTED)
+# 🔐 2. SECURE PROFILE + PIN SYSTEM (DYNAMIC TITLE)
 # =====================================================================
 m_user, m_pwd, m_totp, m_api_key = "", "", "", ""
 
-with st.sidebar.expander("🔐 2. Profile & PIN", expanded=True):
-    if not st.session_state.get("is_logged_in", False):
+# Naya Logic: Sirf check karo ki kya PIN daalne ke baad naam save hua hai
+logged_name = st.session_state.get("m_profile_name", "")
+is_pin_verified = bool(logged_name) # True agar PIN sahi daal diya hai
+
+prof_title = f"🔐 2. Profile ({logged_name}) ✅" if is_pin_verified else "🔐 2. Profile & PIN"
+
+with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
+    if not is_pin_verified:
         try:
             profiles = list(st.secrets["profiles"].keys())
         except:
@@ -164,17 +182,29 @@ with st.sidebar.expander("🔐 2. Profile & PIN", expanded=True):
                 correct_pin = str(st.secrets["profiles"][true_profile]["pin"])
                 
                 if entered_pin == correct_pin:
+                    st.session_state.m_profile_name = selected_profile # Naam save ho gaya
                     st.session_state.m_user = st.secrets["profiles"][true_profile]["user_id"]
                     st.session_state.m_pwd = st.secrets["profiles"][true_profile]["password"]
                     st.session_state.m_totp = st.secrets["profiles"][true_profile]["totp_secret"]
                     st.session_state.m_api_key = st.secrets["profiles"][true_profile]["api_key"]
                     st.success("✅ PIN Verified!")
+                    time.sleep(0.5)
+                    st.rerun() # Turant refresh karega taaki dabba band ho jaye
                 else:
                     st.error("❌ Wrong PIN!")
         else:
             st.warning("⚠️ Secrets file missing.")
     else:
-        st.success("✅ Profile Logged In")
+        st.success(f"✅ Welcome, {logged_name}!")
+        if st.button("Logout Profile", width="stretch"):
+            # Logout par saara data clear kar do
+            st.session_state.m_profile_name = ""
+            st.session_state.is_logged_in = False # API login ko bhi reset karo
+            st.session_state.m_user = ""
+            st.session_state.m_pwd = ""
+            st.session_state.m_totp = ""
+            st.session_state.m_api_key = ""
+            st.rerun()
 
 # Session state se safe credentials nikalna engine ke liye
 m_user = st.session_state.get("m_user", "")
@@ -185,9 +215,11 @@ m_api_key = st.session_state.get("m_api_key", "")
 is_live_algo_on = st.session_state.get("master_switch_key", False)
 
 # =====================================================================
-# 🔴 3. LIVE MSTOCK EXECUTION ENGINE (SIDEBAR SHIFTED)
+# 🔴 3. LIVE MSTOCK EXECUTION ENGINE (DYNAMIC TITLE)
 # =====================================================================
-with st.sidebar.expander("🔴 3. MStock Live & Capital", expanded=True):
+engine_title = "🔴 3. MStock Live [REAL ⚠️]" if is_live_algo_on else "🔴 3. MStock Live [PAPER 🟢]"
+
+with st.sidebar.expander(engine_title, expanded=True):
     auto_on = st.checkbox("🔴 MASTER SWITCH (Real Money)", value=is_live_algo_on, key="master_switch_key")
     
     if auto_on:
@@ -204,12 +236,22 @@ with st.sidebar.expander("🔴 3. MStock Live & Capital", expanded=True):
 # =====================================================================
 # 🔍 4. STRATEGY FILTERS (SIDEBAR SHIFTED)
 # =====================================================================
-with st.sidebar.expander("🔍 4. Strategy Filters", expanded=True):
+# =====================================================================
+# 🔍 4. STRATEGY FILTERS (DYNAMIC TITLE)
+# =====================================================================
+# Memory se filter ki values uthao taaki real-time count ho sake
+f_ema = st.session_state.get("chk_ema", True)
+f_wide = st.session_state.get("chk_wide", True)
+f_trend = st.session_state.get("chk_trend", True)
+f_time = st.session_state.get("chk_time", True)
+f_count = sum([f_ema, f_wide, f_trend, f_time])
+
+with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/4)", expanded=True):
     f_c1, f_c2 = st.columns(2)
-    ema_filter = f_c1.checkbox("📉 9-EMA", value=True)
-    hide_wide = f_c2.checkbox("🚫 Hide Wide", value=True)
-    triple_conf = f_c1.checkbox("📈 Trend Sync", value=True)
-    time_master = f_c2.checkbox("⏱️ Time Master", value=True)
+    ema_filter = f_c1.checkbox("📉 9-EMA", value=f_ema, key="chk_ema")
+    hide_wide = f_c2.checkbox("🚫 Hide Wide", value=f_wide, key="chk_wide")
+    triple_conf = f_c1.checkbox("📈 Trend Sync", value=f_trend, key="chk_trend")
+    time_master = f_c2.checkbox("⏱️ Time Master", value=f_time, key="chk_time")
 
 current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
