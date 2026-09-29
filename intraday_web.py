@@ -94,7 +94,7 @@ selected_label = col_r2.selectbox("Interval", options=list(refresh_dict.keys()),
 refresh_time = refresh_dict[selected_label]
 
 # --- WATCHLIST SIDE-BY-SIDE ---
-col_w1, col_w2 = st.sidebar.columns([1.8, 1])
+col_w1, col_w2 = st.sidebar.columns([1.2, 1])
 col_w1.markdown("<div style='margin-top: 8px; font-weight: bold; color: gray;'>📋 WatchList:</div>", unsafe_allow_html=True)
 watchlist_choice = col_w2.selectbox("Watchlist", ["Nifty 50", "Nifty 100", "All F&O"], index=0, label_visibility="collapsed")
 # st.sidebar.markdown("---")
