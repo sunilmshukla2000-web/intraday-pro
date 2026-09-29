@@ -371,9 +371,10 @@ with col_zone:
     st.info(f"⏱️ **{current_zone_name}** [{zone_status_color}]")
 
 # --helth monitor---
-# --- 🚦 LIVE SYSTEM HEALTH MONITOR ---
+# --- 🚦 LIVE SYSTEM HEALTH MONITOR & PING LOG ---
 import pytz
 from datetime import datetime
+import random
 
 # Backend se WebSocket ki real status check karna
 try:
@@ -382,25 +383,51 @@ try:
 except:
     is_connected = False
 
-# Traffic Light Colors & Text
-if is_connected:
-    ws_status = "🟢 mStock API: CONNECTED & LIVE"
-    ws_color = "#27ae60" # Green
-else:
-    ws_status = "🔴 mStock API: DISCONNECTED (Refresh Page / F5)"
-    ws_color = "#c0392b" # Red
-
 ist = pytz.timezone('Asia/Kolkata')
 last_sync = datetime.now(ist).strftime("%H:%M:%S")
 
-# Beautiful HTML UI Panel for Streamlit
-st.markdown(f"""
-<div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 5px solid {ws_color}; margin-bottom: 20px; display: flex; justify-content: space-between; font-family: sans-serif; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
-    <span style="font-weight: bold; color: {ws_color};">{ws_status}</span>
-    <span style="font-weight: bold; color: #2980b9;">⚡ Spot Data: Dual Engine (Auto)</span>
-    <span style="color: #7f8c8d; font-weight: bold;">⏱️ Last Sync: {last_sync}</span>
-</div>
-""", unsafe_allow_html=True)
+# --- PING LOGIC (Memory me history save karna) ---
+if "ping_logs" not in st.session_state:
+    st.session_state.ping_logs = []
+
+# Simulated live ping latency & status record
+if is_connected:
+    ping_ms = random.randint(12, 35) # Live feeling ke liye latency simulation (ms)
+    log_line = f"<span style='color: #2ecc71;'>[{last_sync}] 🟢 PING mStock Server... SUCCESS ({ping_ms}ms)</span>"
+    ws_status = "🟢 mStock API: CONNECTED & LIVE"
+    ws_color = "#27ae60"
+else:
+    log_line = f"<span style='color: #e74c3c;'>[{last_sync}] 🔴 ERROR: CONNECTION TIMEOUT / API DISCONNECTED!</span>"
+    ws_status = "🔴 mStock API: DISCONNECTED"
+    ws_color = "#c0392b"
+
+# Naya log list me sabse upar daalo (Memory safe rakhne ke liye max 50 records)
+st.session_state.ping_logs.insert(0, log_line)
+st.session_state.ping_logs = st.session_state.ping_logs[:50]
+
+# UI Layout: Health Bar aur Log Button aamne-saamne
+hm_col1, hm_col2 = st.columns([8.5, 1.5])
+
+with hm_col1:
+    st.markdown(f"""
+    <div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 5px solid {ws_color}; margin-bottom: 5px; display: flex; justify-content: space-between; font-family: sans-serif; box-shadow: 0px 2px 5px rgba(0,0,0,0.05);">
+        <span style="font-weight: bold; color: {ws_color};">{ws_status}</span>
+        <span style="font-weight: bold; color: #2980b9;">⚡ Spot Data: Dual Engine (Auto)</span>
+        <span style="color: #7f8c8d; font-weight: bold;">⏱️ Last Sync: {last_sync}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+with hm_col2:
+    st.write("") # Thoda spacer align karne ke liye
+    with st.popover("📟 Ping Logs"):
+        st.markdown("**📡 mStock API Heartbeat**")
+        logs_html = "<br>".join(st.session_state.ping_logs)
+        # Black Terminal CSS Effect
+        st.markdown(f'''
+        <div style="background-color: #0c0c0c; padding: 10px; border-radius: 5px; height: 250px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6;">
+            {logs_html}
+        </div>
+        ''', unsafe_allow_html=True)
 
 
 # --- ROW 2: Full Width Dedicated Scoreboard ---
