@@ -151,15 +151,10 @@ DEFAULT_SLIDERS = {
     "min_price": 100.0, "max_price": 5000.0
 }
 
-# --- LOAD SAVED SETTINGS ---
+# --- LOAD SAVED SETTINGS (FROM CLOUD) ---
 def load_sliders():
-    user_file = f"slider_{st.session_state.get('m_user', 'guest')}.json"
-    if os.path.exists(user_file):
-        try:
-            with open(user_file, "r") as f:
-                return json.load(f)
-        except: pass
-    return DEFAULT_SLIDERS.copy()
+    current_user = st.session_state.get('m_user', 'guest')
+    return load_cloud_data(current_user, "sliders", DEFAULT_SLIDERS.copy())
 
 if 'sl_state' not in st.session_state:
     st.session_state.sl_state = load_sliders()
@@ -385,19 +380,19 @@ with st.sidebar.expander("🎛️ Sliders (RSI, Vol, ORB)", expanded=False):
             "wick_limit": wick_limit, "vwap_dist_limit": vwap_dist_limit,
             "min_price": min_price, "max_price": max_price
         }
-        # with open("slider_settings.json", "w") as f: json.dump(new_sl, f)
-        with open(f"slider_{st.session_state.get('m_user', 'guest')}.json", "w") as f: json.dump(new_sl, f)
+        # Seedha Firebase par gaya data!
+        save_cloud_data(st.session_state.get('m_user', 'guest'), "sliders", new_sl)
         st.session_state.sl_state = new_sl
-        st.success("Saved!")
+        st.success("✅ Saved to Cloud!")
         time.sleep(0.5)
         st.rerun()
         
     # 🔄 DEFAULT BUTTON
     if btn_reset.button("🔄 Default", width="stretch"):
-        # with open("slider_settings.json", "w") as f: json.dump(DEFAULT_SLIDERS, f)
-        with open(f"slider_{st.session_state.get('m_user', 'guest')}.json", "w") as f: json.dump(DEFAULT_SLIDERS, f)
+        # Firebase me wapas default override kar diya
+        save_cloud_data(st.session_state.get('m_user', 'guest'), "sliders", DEFAULT_SLIDERS.copy())
         st.session_state.sl_state = DEFAULT_SLIDERS.copy()
-        st.success("Reset to Strict!")
+        st.success("✅ Reset to Strict in Cloud!")
         time.sleep(0.5)
         st.rerun()
 
