@@ -31,26 +31,34 @@ st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Ex
 import pytz
 ist = pytz.timezone('Asia/Kolkata')
 
-# ⚙️ TOP HEADER WITH EXIT TIMING & GIFT NIFTY SETTINGS
-# Dono popover buttons ko barabar aur perfect align karne ke liye chhoti CSS
-st.markdown('<style>div[data-testid="stPopover"] > button { height: 38px !important; margin-top: 0px !important; font-size: 14px !important; width: 100% !important; padding: 0px 5px !important; white-space: nowrap !important; }</style>', unsafe_allow_html=True)
+# ⚙️ TOP HEADER WITH EXIT TIMING, TIME BYPASS & GIFT NIFTY SETTINGS
+# Checkbox ko bhi buttons ki height par align karne ke liye CSS update kiya
+st.markdown('''<style>
+    div[data-testid="stPopover"] > button { height: 38px !important; margin-top: 0px !important; font-size: 14px !important; width: 100% !important; padding: 0px 5px !important; white-space: nowrap !important; }
+    div[data-testid="stCheckbox"] { padding-top: 5px; } 
+</style>''', unsafe_allow_html=True)
 
-h_col1, h_col2, h_col3 = st.columns([7.4, 1.3, 1.3])
+# Columns ko 4 hisson me baanta gaya
+h_col1, h_col2, h_col3, h_col4 = st.columns([5.4, 2.0, 1.3, 1.3])
 
 with h_col1:
-    # Text thoda sa neeche kiya taaki buttons ke level me aa jaye
     st.markdown(f'<p class="sub-font" style="margin-top: 5px;">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
 
 with h_col2:
+    # 🌟 VIP Master Switch
+    f_time = st.session_state.get("chk_time", True)
+    time_master = st.checkbox("⏳ Time Zones ON", value=f_time, key="chk_time")
+
+with h_col3:
     with st.popover("⏰ Auto-Exit", use_container_width=True):
         from datetime import time as dtime
         st.markdown("**Segment Exit Time**")
-        exit_stock = st.time_input("Stocks (Cash)", dtime(15, 0)) # Default 3:00 PM
-        exit_opt = st.time_input("Stock-Options", dtime(15, 15))  # Default 3:15 PM
-        exit_nifty = st.time_input("NIFTY Index", dtime(15, 15))  # Default 3:15 PM
-        exit_bank = st.time_input("BANKNIFTY", dtime(15, 15))     # Default 3:15 PM
+        exit_stock = st.time_input("Stocks (Cash)", dtime(15, 0))
+        exit_opt = st.time_input("Stock-Options", dtime(15, 15))
+        exit_nifty = st.time_input("NIFTY Index", dtime(15, 15))
+        exit_bank = st.time_input("BANKNIFTY", dtime(15, 15))
 
-with h_col3:
+with h_col4:
     with st.popover("⚙️ Setting", use_container_width=True):
         manual_prev = st.number_input("Prev Close", value=0.0)
         manual_curr = st.number_input("Live Price", value=0.0)
@@ -259,15 +267,14 @@ with st.sidebar.expander(engine_title, expanded=True):
 f_ema = st.session_state.get("chk_ema", True)
 f_wide = st.session_state.get("chk_wide", True)
 f_trend = st.session_state.get("chk_trend", True)
-f_time = st.session_state.get("chk_time", True)
-f_count = sum([f_ema, f_wide, f_trend, f_time])
+# Yahan se time filter hata diya, ab total count 3 rahega
+f_count = sum([f_ema, f_wide, f_trend])
 
-with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/4)", expanded=True):
+with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/3)", expanded=True):
     f_c1, f_c2 = st.columns(2)
     ema_filter = f_c1.checkbox("9-EMA", value=f_ema, key="chk_ema")
     hide_wide = f_c2.checkbox("Hide Wide", value=f_wide, key="chk_wide")
     triple_conf = f_c1.checkbox("Trend Sync", value=f_trend, key="chk_trend")
-    time_master = f_c2.checkbox("Time Master", value=f_time, key="chk_time")
 
 current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
