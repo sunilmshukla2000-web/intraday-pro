@@ -270,14 +270,17 @@ def place_mstock_order(session, api_key, token, exc, tsym, qty, action, current_
         import json
         if not session or not token: return {"status": "error", "message": "No active session"}
         
-        # 🔥 SMART ORDER TYPE LOGIC (SLIPPAGE FIX)
+        # 🔥 SMART ORDER TYPE LOGIC (SLIPPAGE FIX + TICK SIZE FIX)
         order_type = "LIMIT"  
         if exc == "NFO":
             if current_price <= 0.0:
                 return {"status": "error", "message": "REJECTED: Live Premium not available for Option Limit Order"}
-            safe_price = round(current_price * 1.02, 1) if action == "BUY" else round(current_price * 0.98, 1)
+            safe_price = current_price * 1.02 if action == "BUY" else current_price * 0.98
         else:
-            safe_price = round(current_price * 1.002, 2) if action == "BUY" else round(current_price * 0.998, 2)
+            safe_price = current_price * 1.002 if action == "BUY" else current_price * 0.998
+            
+        # ⚠️ CRITICAL FIX: NSE requires prices in multiples of 0.05. Yeh formula exact 0.05 me round kar dega
+        safe_price = round(safe_price * 20) / 20.0
             
         url = 'https://api.mstock.trade/openapi/typea/orders/regular'
         headers = {
@@ -466,8 +469,9 @@ def run_stock_scanner(params):
                     live_spot_price = get_live_spot_price(s, m_api_key)
                     
                     if live_spot_price <= 0:
-                        # 2. Agar broker server down hai ya price 0 de, tabhi Yahoo Finance par jao
-                        yf_sym = "^NSEI" if s == "NIFTY_IDX" else ("^NSEBANK" if s == "BANKNIFTY_IDX" else f"{s}.NS")
+                        # 2. Agar broker server down hai, tabhi Yahoo Finance par jao
+                        # 🔥 BUG FIX: Agar pehle se index hai (^) toh '.NS' mat lagao
+                        yf_sym = s if s.startswith("^") else f"{s}.NS"
                         fast_df = yf.download(yf_sym, period="1d", interval="1m", progress=False)
                         if not fast_df.empty:
                             live_spot_price = float(fast_df['Close'].iloc[-1])
