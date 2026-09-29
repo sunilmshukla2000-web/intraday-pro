@@ -248,10 +248,10 @@ f_count = sum([f_ema, f_wide, f_trend, f_time])
 
 with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/4)", expanded=True):
     f_c1, f_c2 = st.columns(2)
-    ema_filter = f_c1.checkbox("📉 9-EMA", value=f_ema, key="chk_ema")
-    hide_wide = f_c2.checkbox("🚫 Hide Wide", value=f_wide, key="chk_wide")
-    triple_conf = f_c1.checkbox("📈 Trend Sync", value=f_trend, key="chk_trend")
-    time_master = f_c2.checkbox("⏱️ Time Master", value=f_time, key="chk_time")
+    ema_filter = f_c1.checkbox("9-EMA", value=f_ema, key="chk_ema")
+    hide_wide = f_c2.checkbox("Hide Wide", value=f_wide, key="chk_wide")
+    triple_conf = f_c1.checkbox("Trend Sync", value=f_trend, key="chk_trend")
+    time_master = f_c2.checkbox("Time Master", value=f_time, key="chk_time")
 
 current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
