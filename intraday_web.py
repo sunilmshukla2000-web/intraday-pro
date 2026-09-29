@@ -555,11 +555,9 @@ if should_run_scan:
         
     if len(scan_list) == 0:
         if not is_active_zone and not live_trades_active:
-            st.info(f"⏳ System is currently in {current_zone_name} (No Trade Zone). Waiting for the active zone to begin scanning...")
-            st.stop()
+            st.info(f"⏳ System is currently in {current_zone_name} (No Trade Zone). Table is visible below...")
         else:
             st.warning("⚠️ Please select at least one segment (NIFTY, BANKNIFTY, STOCKS, or STOCK-OPT) to scan!")
-            st.stop()
     # -------------------------------------------------------
     
     params = {
