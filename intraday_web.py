@@ -31,14 +31,30 @@ st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Ex
 import pytz
 ist = pytz.timezone('Asia/Kolkata')
 
-# ⚙️ TOP HEADER WITH GIFT NIFTY SETTING
-h_col1, h_col2 = st.columns([8.5, 1.5])
+# ⚙️ TOP HEADER WITH EXIT TIMING & GIFT NIFTY SETTINGS
+# Dono popover buttons ko barabar aur perfect align karne ke liye chhoti CSS
+st.markdown('<style>div[data-testid="stPopover"] > button { height: 38px !important; margin-top: 0px !important; font-size: 14px !important; width: 100% !important; padding: 0px 5px !important; white-space: nowrap !important; }</style>', unsafe_allow_html=True)
+
+h_col1, h_col2, h_col3 = st.columns([7.4, 1.3, 1.3])
+
 with h_col1:
-    st.markdown(f'<p class="sub-font">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
+    # Text thoda sa neeche kiya taaki buttons ke level me aa jaye
+    st.markdown(f'<p class="sub-font" style="margin-top: 5px;">Last Refreshed: {datetime.now(ist).strftime("%H:%M:%S")}</p>', unsafe_allow_html=True)
+
 with h_col2:
-    with st.popover("⚙️ Setting"):
+    with st.popover("⏰ Auto-Exit", use_container_width=True):
+        from datetime import time as dtime
+        st.markdown("**Segment Exit Time**")
+        exit_stock = st.time_input("Stocks (Cash)", dtime(15, 0)) # Default 3:00 PM
+        exit_opt = st.time_input("Stock-Options", dtime(15, 15))  # Default 3:15 PM
+        exit_nifty = st.time_input("NIFTY Index", dtime(15, 15))  # Default 3:15 PM
+        exit_bank = st.time_input("BANKNIFTY", dtime(15, 15))     # Default 3:15 PM
+
+with h_col3:
+    with st.popover("⚙️ Setting", use_container_width=True):
         manual_prev = st.number_input("Prev Close", value=0.0)
         manual_curr = st.number_input("Live Price", value=0.0)
+        
 st.markdown("---")
 
 # =====================================================================
@@ -506,30 +522,44 @@ table_filter = st.radio("Filter Trades:", ["All", "🟢 Active", "🔴 Closed", 
 st.markdown("---")
 
 # =====================================================================
-# ⏰ 3:00 PM AUTO SQUARE-OFF (SAVE RMS PENALTY)
+# ⏰ DYNAMIC CUSTOM SEGMENT-WISE AUTO SQUARE-OFF
 # =====================================================================
 if st.session_state.signal_tracker:
     curr_time_eod = datetime.now(ist).time()
-    from datetime import time as dtime
     
-    # Agar 3:00 PM ya uske baad ka time hai aur aaj ka auto-exit nahi hua hai
-    if curr_time_eod >= dtime(15, 0) and not st.session_state.get("auto_eod_done", False):
-        live_trades = {k: v for k, v in st.session_state.signal_tracker.items() if "LIVE" in v["status"]}
+    # Sirf un trades ko pakdo jo abhi "LIVE" hain
+    live_trades = {k: v for k, v in st.session_state.signal_tracker.items() if "LIVE" in v["status"]}
+    
+    if live_trades:
+        any_trade_closed = False
         
-        if live_trades:
-            st.warning("⏰ 3:00 PM Auto Square-Off Triggered! Closing all open positions to avoid RMS penalty...")
+        for sym, t_data in live_trades.items():
+            is_opt = t_data.get("opt_sym") is not None
             
-            for sym, t_data in live_trades.items():
+            # Identify karo ki trade kis category ka hai aur uska custom time kya hai?
+            if sym == "^NSEI":
+                exit_time = exit_nifty
+                reason_text = f"⏰ {exit_nifty.strftime('%H:%M')} (Nifty Exit)"
+            elif sym == "^NSEBANK":
+                exit_time = exit_bank
+                reason_text = f"⏰ {exit_bank.strftime('%H:%M')} (BankNifty Exit)"
+            elif is_opt:
+                exit_time = exit_opt
+                reason_text = f"⏰ {exit_opt.strftime('%H:%M')} (Option Exit)"
+            else:
+                exit_time = exit_stock
+                reason_text = f"⏰ {exit_stock.strftime('%H:%M')} (Stock Exit)"
+                
+            # Agar us specific trade ka time current time se match ya cross ho gaya, tabhi kaato
+            if curr_time_eod >= exit_time:
                 is_real_money = t_data.get("is_mstock", False)
                 qty = t_data.get("trade_qty", 1)
                 action = t_data.get("action", "BUY")
                 reverse_action = "SELL" if action == "BUY" else "BUY"
                 
-                is_opt = t_data.get("opt_sym") is not None
                 last_res = t_data.get("last_res", {})
                 current_price = float(last_res.get("opt_p", 0.0)) if is_opt else float(last_res.get("p", 0.0))
                 
-                # Agar real trade tha, toh mStock par Exit Order fire karo
                 if is_real_money and m_api_key:
                     session = MSTOCK_CACHE.get(f"session_{m_api_key}")
                     acc_tok = MSTOCK_CACHE.get(f"access_token_{m_api_key}")
@@ -542,16 +572,17 @@ if st.session_state.signal_tracker:
                         except: pass
                 
                 # System me status update karo
-                st.session_state.signal_tracker[sym]["status"] = "⏰ 3PM AUTO EXIT"
+                st.session_state.signal_tracker[sym]["status"] = reason_text
                 st.session_state.signal_tracker[sym]["locked"] = True
                 if "last_res" in st.session_state.signal_tracker[sym]:
-                    st.session_state.signal_tracker[sym]["last_res"]["status"] = "⏰ 3PM AUTO EXIT"
+                    st.session_state.signal_tracker[sym]["last_res"]["status"] = reason_text
                 
-        # Lock kar do taaki din me baar-baar run na ho
-        st.session_state.auto_eod_done = True
-        st.success("✅ All positions safely squared off at 3:00 PM!")
-        time.sleep(2)
-        st.rerun()
+                any_trade_closed = True
+                
+        if any_trade_closed:
+            st.success("✅ Dynamic Auto-Square Off Triggered based on your custom timing!")
+            time.sleep(2)
+            st.rerun()
 
 # ==================== YAHAN SE REPLACE KAREIN ====================
 status_placeholder = st.empty() # NAYA: Screen saaf karne wala Wiper 1
