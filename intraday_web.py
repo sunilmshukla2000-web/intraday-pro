@@ -270,17 +270,21 @@ with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
                 correct_pin = str(all_profiles[true_profile]["pin"])
                 
                 if entered_pin == correct_pin:
-                    st.session_state.m_profile_name = selected_profile 
-                    st.session_state.m_user = all_profiles[true_profile]["user_id"]
-                    st.session_state.m_pwd = all_profiles[true_profile]["password"]
-                    st.session_state.m_totp = all_profiles[true_profile]["totp_secret"]
-                    st.session_state.m_api_key = all_profiles[true_profile]["api_key"]
-                    
-                    st.session_state.sl_state = load_cloud_data(st.session_state.m_user, "sliders", DEFAULT_SLIDERS.copy())
-                    
-                    st.success("✅ PIN Verified & Settings Synced!")
-                    time.sleep(0.5)
-                    st.rerun() 
+                    user_status = all_profiles[true_profile].get("status", "active")
+                    if user_status == "disabled":
+                        st.error("❌ Your account is currently disabled by Admin.")
+                    else:
+                        st.session_state.m_profile_name = selected_profile 
+                        st.session_state.m_user = all_profiles[true_profile]["user_id"]
+                        st.session_state.m_pwd = all_profiles[true_profile]["password"]
+                        st.session_state.m_totp = all_profiles[true_profile]["totp_secret"]
+                        st.session_state.m_api_key = all_profiles[true_profile]["api_key"]
+                        
+                        st.session_state.sl_state = load_cloud_data(st.session_state.m_user, "sliders", DEFAULT_SLIDERS.copy())
+                        
+                        st.success("✅ PIN Verified & Settings Synced!")
+                        time.sleep(0.5)
+                        st.rerun() 
                 else:
                     st.error("❌ Wrong PIN!")
         else:
@@ -299,46 +303,65 @@ with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
 
 # --- 👑 ADMIN CONTROL PANEL (ONLY FOR SUNIL) ---
 if is_pin_verified and logged_name.lower() == "sunil":
-    with st.sidebar.expander("👑 Admin Control (Add/Del Users)", expanded=False):
-        st.markdown("**➕ Add New User**")
-        with st.form("add_user_form", clear_on_submit=True):
-            n_name = st.text_input("Name (eg. RAHUL)").strip().lower()
-            n_pin = st.text_input("Login PIN (4 digits)", type="password", max_chars=4)
-            n_user_id = st.text_input("mStock User ID")
-            n_pwd = st.text_input("mStock Password", type="password")
-            n_totp = st.text_input("TOTP Secret")
-            n_api = st.text_input("API Key", type="password")
-            
-            if st.form_submit_button("💾 Save User", use_container_width=True):
-                if n_name and n_pin and n_user_id and n_pwd and n_totp and n_api:
-                    new_u_data = {
-                        "pin": n_pin, "user_id": n_user_id,
-                        "password": n_pwd, "totp_secret": n_totp, "api_key": n_api
-                    }
-                    db.reference(f'intraday_pro/auth/users/{n_name}').set(new_u_data)
-                    st.success(f"✅ User {n_name.upper()} added to Firebase!")
-                    time.sleep(1.5)
-                    st.rerun()
-                else:
-                    st.error("⚠️ Please fill all fields!")
+    with st.sidebar.expander("👑 Admin Control (User Management)", expanded=False):
+        admin_tab1, admin_tab2, admin_tab3 = st.tabs(["➕ Add", "⏸️ Status", "🗑️ Del"])
+        
+        with admin_tab1:
+            with st.form("add_user_form", clear_on_submit=True):
+                n_name = st.text_input("Name (eg. RAHUL)").strip().lower()
+                n_pin = st.text_input("Login PIN (4 digits)", type="password", max_chars=4)
+                n_user_id = st.text_input("mStock User ID")
+                n_pwd = st.text_input("mStock Password", type="password")
+                n_totp = st.text_input("TOTP Secret")
+                n_api = st.text_input("API Key", type="password")
+                
+                if st.form_submit_button("💾 Save User", use_container_width=True):
+                    if n_name and n_pin and n_user_id and n_pwd and n_totp and n_api:
+                        new_u_data = {
+                            "pin": n_pin, "user_id": n_user_id,
+                            "password": n_pwd, "totp_secret": n_totp, "api_key": n_api,
+                            "status": "active"
+                        }
+                        db.reference(f'intraday_pro/auth/users/{n_name}').set(new_u_data)
+                        st.success(f"✅ User {n_name.upper()} added to Firebase!")
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Please fill all fields!")
         
         fb_user_list = list(fb_users.keys())
         if fb_user_list:
-            st.markdown("---")
-            st.markdown("**🗑️ Delete User**")
-            del_user = st.selectbox("Select user to delete", [u.upper() for u in fb_user_list], label_visibility="collapsed")
-            if st.button(f"🚨 Delete {del_user}", use_container_width=True):
-                true_del = del_user.lower()
-                del_user_id = fb_users[true_del].get("user_id", "")
+            with admin_tab2:
+                mod_user = st.selectbox("Select User", [u.upper() for u in fb_user_list], label_visibility="collapsed", key="mod_user")
+                true_mod = mod_user.lower()
+                curr_status = fb_users[true_mod].get("status", "active")
                 
-                # Delete logic (Sath me uske cloud sliders bhi saaf kar dega)
-                db.reference(f'intraday_pro/auth/users/{true_del}').delete()
-                if del_user_id:
-                    db.reference(f'intraday_pro/users/{del_user_id}').delete() 
-                
-                st.success(f"🗑️ User {del_user} permanently deleted!")
-                time.sleep(1.5)
-                st.rerun()
+                if curr_status == "active":
+                    if st.button(f"⏸️ Disable {mod_user}", use_container_width=True):
+                        db.reference(f'intraday_pro/auth/users/{true_mod}/status').set("disabled")
+                        st.warning(f"⏸️ User {mod_user} Disabled!")
+                        time.sleep(1)
+                        st.rerun()
+                else:
+                    if st.button(f"▶️ Enable {mod_user}", use_container_width=True):
+                        db.reference(f'intraday_pro/auth/users/{true_mod}/status').set("active")
+                        st.success(f"▶️ User {mod_user} Activated!")
+                        time.sleep(1)
+                        st.rerun()
+
+            with admin_tab3:
+                del_user = st.selectbox("Select user to delete", [u.upper() for u in fb_user_list], label_visibility="collapsed", key="del_user")
+                if st.button(f"🚨 Delete {del_user}", use_container_width=True):
+                    true_del = del_user.lower()
+                    del_user_id = fb_users[true_del].get("user_id", "")
+                    
+                    db.reference(f'intraday_pro/auth/users/{true_del}').delete()
+                    if del_user_id:
+                        db.reference(f'intraday_pro/users/{del_user_id}').delete() 
+                    
+                    st.success(f"🗑️ User {del_user} permanently deleted!")
+                    time.sleep(1.5)
+                    st.rerun()
 
 # Session state se safe credentials nikalna engine ke liye
 m_user = st.session_state.get("m_user", "")
