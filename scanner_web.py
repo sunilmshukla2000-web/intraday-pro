@@ -204,23 +204,30 @@ def get_live_option_premium(opt_symbol, api_key):
     try:
         def fetch_price():
             df_opt = MSTOCK_CACHE.get("df_options")
+            tk_id = None
             if df_opt is not None and not df_opt.empty:
                 clean_opt = str(opt_symbol).strip().upper()
                 tk_row = df_opt[df_opt['tradingsymbol'].astype(str).str.strip().str.upper() == clean_opt]
                 if not tk_row.empty:
-                    tk = int(tk_row.iloc[0]['instrument_token'])
+                    tk_id = int(tk_row.iloc[0]['instrument_token'])
                     # Sirf tabhi memory se padho jab connection ZINDA ho
                     if WS_CACHE["connected"] and WS_CACHE["ws"]:
-                        WS_CACHE["ws"].send(json.dumps({"a": "subscribe", "v": [tk]}))
-                        if tk in WS_CACHE["data"] and WS_CACHE["data"][tk]["ltp"] > 0:
-                            return float(WS_CACHE["data"][tk]["ltp"])
-                        
+                        WS_CACHE["ws"].send(json.dumps({"a": "subscribe", "v": [tk_id]}))
+                        # 🔥 FIX 1: Chota sa wait loop (0.5 sec) taaki illiquid options ka price aa sake
+                        for _ in range(5):
+                            if tk_id in WS_CACHE["data"] and WS_CACHE["data"][tk_id]["ltp"] > 0:
+                                return float(WS_CACHE["data"][tk_id]["ltp"])
+                            time.sleep(0.1)
+                    
             token = MSTOCK_CACHE.get(f"access_token_{api_key}")
             session = MSTOCK_CACHE.get(f"session_{api_key}")
             if not token or not session or not opt_symbol: return 0.0
                 
             headers = {'X-Mirae-Version': '1', 'Authorization': f'token {api_key}:{token}'}
-            params = {'i': [f'NFO:{opt_symbol}']}
+            # 🔥 FIX 2: API ko Name ki jagah Token bhejo (mStock API format)
+            api_query = f"NFO:{tk_id}" if tk_id else f"NFO:{opt_symbol}"
+            params = {'i': [api_query]}
+            
             res = session.get('https://api.mstock.trade/openapi/typea/instruments/quote/ltp', params=params, headers=headers, timeout=3)
             if res.status_code == 200:
                 data = res.json().get('data', [])
@@ -324,8 +331,6 @@ def run_stock_scanner(params):
     log_func = params.get('log_func', print) 
     
     th = params['vol_sense']
-    t_pct = params['target']
-    s_pct = params['sl']
     risk_mode = params['risk_mode'] 
     ema_filter_on = params['ema_on']
     hide_wide_orb = params['hide_wide']
@@ -612,10 +617,21 @@ def run_stock_scanner(params):
                     exact_opt_sym, opt_str, lot_val = None, "CASH (Eq)", 1
                     opt_entry_price = 0.0
                 
+                # --- SMART SEGMENT RISK LOGIC ---
+                if "BANKNIFTY" in s or "^NSEBANK" in s:
+                    t_pct = float(params.get('bn_tgt', 2.0))
+                    s_pct = float(params.get('bn_sl', 0.75))
+                elif "NIFTY" in s or "^NSEI" in s:
+                    t_pct = float(params.get('n_tgt', 2.0))
+                    s_pct = float(params.get('n_sl', 1.0))
+                else:
+                    t_pct = float(params.get('s_tgt', 3.0))
+                    s_pct = float(params.get('s_sl', 1.5))
+
                 if risk_mode == "ATR":
                     atr_val = (h - l) 
                     s_dist = max(s_pct * atr_val, cp * 0.004)
-                    t_dist = s_dist * 2.0     
+                    t_dist = s_dist * t_pct     
                 else:
                     t_dist, s_dist = cp * (t_pct / 100), cp * (s_pct / 100)
                 

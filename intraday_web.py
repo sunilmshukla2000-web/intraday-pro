@@ -387,11 +387,25 @@ current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
 
 with st.sidebar.expander(f"🎯 Risk & Reward{risk_space}[{current_risk_mode}]", expanded=False):
-    col_s1, col_s2 = st.columns(2)
-    target_pct = col_s1.number_input(f"Target ({current_risk_mode})", value=3.0, step=0.5)
-    sl_pct = col_s2.number_input(f"SL ({current_risk_mode})", value=1.5, step=0.5)
     default_idx = 0 if current_risk_mode == "%" else 1
     risk_mode = st.selectbox("Risk Mode:", ["%", "ATR"], index=default_idx, key="risk_mode_key")
+    
+    tab_bn, tab_n, tab_s = st.tabs(["BankNifty", "Nifty", "Stocks"])
+    
+    with tab_bn:
+        c1, c2 = st.columns(2)
+        bn_tgt = c1.number_input("BN Target", value=2.0, step=0.25)
+        bn_sl = c2.number_input("BN SL", value=0.75, step=0.25)
+        
+    with tab_n:
+        c1, c2 = st.columns(2)
+        n_tgt = c1.number_input("Nifty Target", value=2.0, step=0.25)
+        n_sl = c2.number_input("Nifty SL", value=1.0, step=0.25)
+        
+    with tab_s:
+        c1, c2 = st.columns(2)
+        s_tgt = c1.number_input("Stock Target", value=3.0, step=0.5)
+        s_sl = c2.number_input("Stock SL", value=1.5, step=0.5)
 
 is_tsl_active = st.session_state.get("tsl_active_key", False)
 tsl_dot = "🟢 ON" if is_tsl_active else "🔴 OFF"
@@ -744,7 +758,11 @@ if should_run_scan:
     # -------------------------------------------------------
     
     params = {
-        "nifty_list": scan_list, "vol_sense": vol_min, "target": target_pct, "sl": sl_pct, "risk_mode": risk_mode,
+        "nifty_list": scan_list, "vol_sense": vol_min, 
+        "bn_tgt": bn_tgt, "bn_sl": bn_sl, 
+        "n_tgt": n_tgt, "n_sl": n_sl, 
+        "s_tgt": s_tgt, "s_sl": s_sl, 
+        "risk_mode": risk_mode,
         "ema_on": ema_filter, "hide_wide": hide_wide, "triple_on": triple_conf, "tracker": st.session_state.signal_tracker,
         "min_price": min_price, "max_price": max_price, "rsi_bull_min": rsi_bull[0], "rsi_bull_max": rsi_bull[1],
         "rsi_bear_min": rsi_bear[0], "rsi_bear_max": rsi_bear[1], "orb_wide": orb_wide_limit, "vwap_dist": vwap_dist_limit,
