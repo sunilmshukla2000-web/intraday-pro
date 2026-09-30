@@ -303,7 +303,7 @@ with st.sidebar.expander(prof_title, expanded=not is_pin_verified):
 
 # --- 👑 ADMIN CONTROL PANEL (ONLY FOR SUNIL) ---
 if is_pin_verified and logged_name.lower() == "sunil":
-    with st.sidebar.expander("👑 Admin Control (User Management)", expanded=False):
+    with st.sidebar.expander("👑 Admin Control (User + - )", expanded=False):
         admin_tab1, admin_tab2, admin_tab3 = st.tabs(["➕ Add", "⏸️ Status", "🗑️ Del"])
         
         with admin_tab1:
