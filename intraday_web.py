@@ -545,10 +545,12 @@ import pytz
 from datetime import datetime
 import random
 
-# Backend se WebSocket ki real status check karna
+# Backend se check karna ki CURRENT USER logged-in hai aur WebSocket chalu hai
 try:
     import scanner_web 
-    is_connected = scanner_web.WS_CACHE.get("connected", False)
+    curr_key = st.session_state.get("m_api_key", "")
+    has_token = bool(curr_key and scanner_web.MSTOCK_CACHE.get(f"access_token_{curr_key}"))
+    is_connected = st.session_state.get('is_logged_in', False) and has_token and scanner_web.WS_CACHE.get("connected", False)
 except:
     is_connected = False
 
