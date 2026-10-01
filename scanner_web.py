@@ -373,6 +373,9 @@ def run_stock_scanner(params):
         n_chg = 0.0
 
     # --- BULK DOWNLOAD ENGINE ---
+    if not nifty50_list:
+        return [v["last_res"] for k, v in signal_tracker.items() if "last_res" in v], signal_tracker
+
     log_func(f"🚀 Fetching {len(nifty50_list)} symbols in ONE GO (Anti-Block)...")
     
     yf_syms = [sym + ".NS" if not sym.startswith("^") else sym for sym in nifty50_list]
