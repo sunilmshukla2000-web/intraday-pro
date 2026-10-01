@@ -76,7 +76,8 @@ def start_mstock_ws(api_key, access_token, log_func=print):
         WS_CACHE["connected"] = False
         WS_CACHE["data"].clear() # 🔥 MAIN FIX: Connection tootne par purana atka hua data saaf karo
         time.sleep(3)
-        start_mstock_ws(api_key, access_token, log_func) 
+        if WS_CACHE.get("active_key") == api_key:
+            start_mstock_ws(api_key, access_token, log_func) 
 
     def run_ws():
         ws_url = f"wss://ws.mstock.trade?API_KEY={api_key}&ACCESS_TOKEN={access_token}"
@@ -85,15 +86,11 @@ def start_mstock_ws(api_key, access_token, log_func=print):
 
     threading.Thread(target=run_ws, daemon=True).start()
 
-# --- 📡 WEBSOCKET BACKGROUND HELPER ---
-def start_mstock_ws(api_key, access_token, log_func=print):
-    if WS_CACHE["connected"] and WS_CACHE.get("active_key") == api_key: return
-    # Agar dusra user login kar raha hai toh purana WS band karke naya chalu karo
-    if WS_CACHE.get("ws"):
-        try: WS_CACHE["ws"].close()
-        except: pass
-    WS_CACHE["connected"] = False
-    WS_CACHE["active_key"] = api_key
+def init_mstock(user, pwd, totp_sec, api_key):
+    global MSTOCK_CACHE
+    if MSTOCK_CACHE.get(f"access_token_{api_key}") and len(MSTOCK_CACHE.get("token_map", {})) > 0:
+        start_mstock_ws(api_key, MSTOCK_CACHE[f"access_token_{api_key}"])
+        return MSTOCK_CACHE[f"access_token_{api_key}"], MSTOCK_CACHE["token_map"]
 
     session = requests.Session()
     MSTOCK_CACHE[f"session_{api_key}"] = session
