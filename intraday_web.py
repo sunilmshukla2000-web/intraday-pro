@@ -45,7 +45,10 @@ from scanner_web import run_stock_scanner, init_mstock, place_mstock_order, MSTO
 # =====================================================================
 # 1. APP CONFIGURATION & STYLING
 # =====================================================================
-st.set_page_config(page_title="Intraday Pro - Web", layout="wide", page_icon="⚡")
+#st.set_page_config(page_title="Intraday Pro - Web", layout="wide", page_icon="⚡")
+import os, base64
+icon_img = "kuber.jpg" if os.path.exists("kuber.jpg") else "🪙"
+st.set_page_config(page_title="Shri Kuber Ji : Intraday Pro", page_icon=icon_img, layout="wide")
 
 st.markdown("""
     <style>
@@ -58,7 +61,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Execution)</p>', unsafe_allow_html=True)
+# st.markdown('<p class="big-font">⚡ My Intraday Setup: Web Edition V5.0 (Pro Execution)</p>', unsafe_allow_html=True)
+# --- 🙏 SHRI KUBER JI CUSTOM HEADER (STANDARD UNIFORM FONT) ---
+def get_kuber_header():
+    img_tag = '<span style="font-size: 36px; margin-right: 12px;">🪙</span>'
+    for fname in ["kuber.jpg", "kuber.jpeg", "kuber.png"]:
+        if os.path.exists(fname):
+            with open(fname, "rb") as f:
+                b64_str = base64.b64encode(f.read()).decode()
+            img_tag = f'<img src="data:image/jpeg;base64,{b64_str}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #FFD700; box-shadow: 0px 2px 6px rgba(0,0,0,0.2); margin-right: 14px;">'
+            break
+            
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            {img_tag}
+            <div style="margin: 0; padding: 0; font-family: 'Source Sans Pro', sans-serif; font-size: 28px; font-weight: 700; color: #1f77b4; line-height: 1.2;">
+                Shri Kuber Ji : Intraday Pro
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+get_kuber_header()
 import pytz
 ist = pytz.timezone('Asia/Kolkata')
 
