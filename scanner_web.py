@@ -341,6 +341,7 @@ def run_stock_scanner(params):
     th = params['vol_sense']
     risk_mode = params['risk_mode'] 
     ema_filter_on = params['ema_on']
+    ema21_filter_on = params.get('ema21_on', True)
     hide_wide_orb = params['hide_wide']
     triple_on = params.get('triple_on', False)
     signal_tracker = params['tracker']
@@ -572,6 +573,7 @@ def run_stock_scanner(params):
             vol_ratio = curr_vol / avg_vol if pd.notna(avg_vol) and avg_vol > 0 else 0
             
             e9_s = ta.ema(df['Close'].ffill(), length=9).iloc[-1]
+            e21_s = ta.ema(df['Close'].ffill(), length=21).iloc[-1]
             rsi = ta.rsi(df['Close'].ffill(), length=14).iloc[-1]
             
             vwap_dist = abs((cp - vw) / vw) * 100
@@ -605,8 +607,11 @@ def run_stock_scanner(params):
             safe_h = h + (h * 0.001)
             safe_l = l - (l * 0.001)
 
-            buy_ok = (cp > e9_s if ema_filter_on else True) and (not triple_on or n_chg > 0) and not wick_trap_buy and vol_ok and (orb_high_dist <= orb_dist_limit) and time_allowed and trend_align_buy
-            sell_ok = (cp < e9_s if ema_filter_on else True) and (not triple_on or n_chg < 0) and not wick_trap_sell and vol_ok and (orb_low_dist <= orb_dist_limit) and time_allowed and trend_align_sell
+            ema21_buy_ok = (cp > e21_s and e9_s > e21_s) if ema21_filter_on else True
+            ema21_sell_ok = (cp < e21_s and e9_s < e21_s) if ema21_filter_on else True
+
+            buy_ok = (cp > e9_s if ema_filter_on else True) and ema21_buy_ok and (not triple_on or n_chg > 0) and not wick_trap_buy and vol_ok and (orb_high_dist <= orb_dist_limit) and time_allowed and trend_align_buy
+            sell_ok = (cp < e9_s if ema_filter_on else True) and ema21_sell_ok and (not triple_on or n_chg < 0) and not wick_trap_sell and vol_ok and (orb_low_dist <= orb_dist_limit) and time_allowed and trend_align_sell
 
             sig = ""
             if cp >= safe_h and cp > vw and buy_ok and strict_buy: sig = "BREAKOUT" if not wide else "WIDE BREAKOUT"
@@ -707,7 +712,7 @@ def run_stock_scanner(params):
                 kundali_text = f"=== DEEP KUNDALI FOR {s} ===\n"
                 kundali_text += f"Time: {datetime.now(ist).strftime('%H:%M:%S')}\n"
                 kundali_text += f"Signal: {sig} (Action: {action_type})\n"
-                kundali_text += f"Live Price: ₹{cp:.2f} | VWAP: ₹{vw:.2f}\n"
+                kundali_text += f"Live Price: ₹{cp:.2f} | VWAP: ₹{vw:.2f} | 9-EMA: ₹{e9_s:.2f} | 21-EMA: ₹{e21_s:.2f}\n"
                 kundali_text += f"Volume Spike: {vol_ratio:.2f}x (Allowed: {th}x to {max_vol_limit}x)\n"
                 kundali_text += f"VWAP Distance: {vwap_dist:.2f}%\n"
                 kundali_text += f"ORB Range: High {h:.2f} | Low {l:.2f}\n"

@@ -418,16 +418,17 @@ with st.sidebar.expander(engine_title, expanded=True):
 # =====================================================================
 # Memory se filter ki values uthao taaki real-time count ho sake
 f_ema = st.session_state.get("chk_ema", True)
+f_ema21 = st.session_state.get("chk_ema21", True)
 f_wide = st.session_state.get("chk_wide", True)
 f_trend = st.session_state.get("chk_trend", True)
-# Yahan se time filter hata diya, ab total count 3 rahega
-f_count = sum([f_ema, f_wide, f_trend])
+f_count = sum([f_ema, f_ema21, f_wide, f_trend])
 
-with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/3)", expanded=True):
+with st.sidebar.expander(f"🔍 4. Strategy Filters ({f_count}/4)", expanded=True):
     f_c1, f_c2 = st.columns(2)
     ema_filter = f_c1.checkbox("9-EMA", value=f_ema, key="chk_ema")
-    hide_wide = f_c2.checkbox("Hide Wide", value=f_wide, key="chk_wide")
-    triple_conf = f_c1.checkbox("Trend Sync", value=f_trend, key="chk_trend")
+    ema21_filter = f_c2.checkbox("21-EMA", value=f_ema21, key="chk_ema21")
+    hide_wide = f_c1.checkbox("Hide Wide", value=f_wide, key="chk_wide")
+    triple_conf = f_c2.checkbox("Trend Sync", value=f_trend, key="chk_trend")
 
 current_risk_mode = st.session_state.get("risk_mode_key", "ATR")
 risk_space = " " * 5 
@@ -811,7 +812,7 @@ if should_run_scan:
         "n_tgt": n_tgt, "n_sl": n_sl, 
         "s_tgt": s_tgt, "s_sl": s_sl, 
         "risk_mode": risk_mode,
-        "ema_on": ema_filter, "hide_wide": hide_wide, "triple_on": triple_conf, "tracker": st.session_state.signal_tracker,
+        "ema_on": ema_filter, "ema21_on": ema21_filter, "hide_wide": hide_wide, "triple_on": triple_conf, "tracker": st.session_state.signal_tracker,
         "min_price": min_price, "max_price": max_price, "rsi_bull_min": rsi_bull[0], "rsi_bull_max": rsi_bull[1],
         "rsi_bear_min": rsi_bear[0], "rsi_bear_max": rsi_bear[1], "orb_wide": orb_wide_limit, "vwap_dist": vwap_dist_limit,
         "wick_limit": wick_limit, "max_vol": vol_max, "orb_dist": orb_dist_limit, "time_filter": time_master,
@@ -1117,6 +1118,7 @@ if st.session_state.signal_tracker:
                             else: df_chart.index = df_chart.index.tz_convert('Asia/Kolkata')
                                 
                             df_chart['9EMA'] = ta.ema(df_chart['Close'], length=9)
+                            df_chart['21EMA'] = ta.ema(df_chart['Close'], length=21)
                             
                             if 'Volume' in df_chart.columns and df_chart['Volume'].sum() > 0: vol = df_chart['Volume']
                             else: vol = pd.Series(1, index=df_chart.index)
@@ -1127,6 +1129,7 @@ if st.session_state.signal_tracker:
                             fig = make_subplots(rows=1, cols=1, shared_xaxes=True)
                             fig.add_trace(go.Candlestick(x=df_chart.index, open=df_chart['Open'], high=df_chart['High'], low=df_chart['Low'], close=df_chart['Close'], name="Price"))
                             fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['9EMA'], mode='lines', line=dict(color='#f39c12', width=1.5), name='9-EMA'))
+                            fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['21EMA'], mode='lines', line=dict(color='#00d2ff', width=1.8), name='21-EMA'))
                             fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['VWAP'], mode='lines', line=dict(color='#9b59b6', width=1.5), name='VWAP'))
                             
                             entry = float(tracker_data.get("entry", 0))
